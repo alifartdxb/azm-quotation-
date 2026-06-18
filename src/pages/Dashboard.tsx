@@ -1,18 +1,45 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { ShoppingCart, Users, FileText, CheckCircle, Clock } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import type { DashboardStats } from '../types';
+import type { DashboardStats, Quotation } from '../types';
+import { getDashboardStats, getQuotations } from '../lib/firebase';
+import { format } from 'date-fns';
 
 export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [allQuotations, setAllQuotations] = useState<Quotation[]>([]);
 
   useEffect(() => {
-    fetch('/api/dashboard/stats')
-      .then(res => res.json())
-      .then(data => setStats(data))
-      .catch(console.error);
+    getDashboardStats().then(setStats).catch(console.error);
+    getQuotations().then(setAllQuotations).catch(console.error);
   }, []);
+
+  const chartData = useMemo(() => {
+    const dataByMonth: Record<string, number> = {};
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    
+    // Initialize current year months
+    months.forEach(m => dataByMonth[m] = 0);
+
+    const currentYear = new Date().getFullYear();
+
+    allQuotations.forEach(q => {
+      const d = new Date(q.createdAt);
+      if (d.getFullYear() === currentYear) {
+        const monthName = format(d, 'MMM');
+        if (dataByMonth[monthName] !== undefined) {
+          dataByMonth[monthName] += (q.grandTotal || 0);
+        }
+      }
+    });
+
+    return months.map(name => ({
+      name,
+      value: dataByMonth[name]
+    }));
+  }, [allQuotations]);
+
 
   if (!stats) {
     return <div className="text-center py-10 opacity-60">Loading dashboard...</div>;
@@ -23,16 +50,6 @@ export default function Dashboard() {
     { name: 'Pending Approvals', value: stats.pendingQuotes, icon: Clock },
     { name: 'Total Customers', value: stats.totalCustomers, icon: Users },
     { name: 'Products Catalog', value: stats.totalProducts, icon: ShoppingCart },
-  ];
-
-  const mockChartData = [
-    { name: 'Jan', value: 4000 },
-    { name: 'Feb', value: 3000 },
-    { name: 'Mar', value: 2000 },
-    { name: 'Apr', value: 2780 },
-    { name: 'May', value: 1890 },
-    { name: 'Jun', value: 2390 },
-    { name: 'Jul', value: 3490 },
   ];
 
   return (
@@ -52,12 +69,12 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         <div className="lg:col-span-3 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col overflow-hidden">
           <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-white">
-            <h3 className="font-bold text-slate-800">Revenue Analytics</h3>
+            <h3 className="font-bold text-slate-800">Quotation Revenue (AED)</h3>
             <button className="text-xs text-blue-600 font-semibold hover:underline">Download Report</button>
           </div>
           <div className="p-5 h-72">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={mockChartData}>
+              <BarChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748B', fontSize: 12}} />
                 <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748B', fontSize: 12}} />

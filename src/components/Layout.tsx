@@ -1,18 +1,31 @@
-import { Link, Outlet, useLocation } from "react-router-dom";
+import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { LayoutDashboard, Users, Package, FileText, Settings, LogOut, Menu, Search, Plus, Bell } from "lucide-react";
 import { useState } from "react";
 import { cn } from "../lib/utils";
+import { useAuth } from "../contexts/AuthContext";
 
 const NAV_ITEMS = [
   { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
   { name: 'Quotations', path: '/quotations', icon: FileText },
   { name: 'Products', path: '/products', icon: Package },
   { name: 'Customers', path: '/customers', icon: Users },
+  { name: 'Settings', path: '/settings', icon: Settings },
 ];
 
 export default function Layout() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { user, signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      navigate('/login');
+    } catch (error) {
+      console.error('Failed to log out', error);
+    }
+  };
 
   return (
     <div className="flex h-screen bg-slate-50 font-sans overflow-hidden">
@@ -29,12 +42,14 @@ export default function Layout() {
         "fixed md:sticky top-0 left-0 h-screen w-64 bg-slate-900 text-slate-300 border-r border-slate-800 z-50 transition-transform duration-300 flex flex-col shrink-0",
         sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
       )}>
-        <div className="p-6 border-b border-slate-800">
-          <div className="flex items-center gap-3 mb-1">
-            <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center font-bold text-white">A</div>
-            <h1 className="text-white font-bold text-lg tracking-tight uppercase">AZM Group</h1>
+        <div className="p-6 border-b border-slate-800 flex justify-between items-start">
+          <div>
+            <div className="flex items-center gap-3 mb-1">
+              <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center font-bold text-white">A</div>
+              <h1 className="text-white font-bold text-lg tracking-tight uppercase">AZM Group</h1>
+            </div>
+            <div className="text-[10px] text-slate-500 font-medium tracking-widest uppercase text-right leading-none mt-2">نظام إدارة عروض الأسعار</div>
           </div>
-          <div className="text-[10px] text-slate-500 font-medium tracking-widest uppercase text-right leading-none mt-2">نظام إدارة عروض الأسعار</div>
         </div>
 
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
@@ -60,12 +75,19 @@ export default function Layout() {
         </nav>
 
         <div className="p-4 border-t border-slate-800 bg-slate-900/50 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-slate-700 border border-slate-600"></div>
-            <div>
-              <p className="text-xs font-bold text-white">Ahmed Abdullah</p>
-              <p className="text-[10px] text-slate-500">Senior Sales Executive</p>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-white font-bold">
+                {user?.name?.charAt(0).toUpperCase()}
+              </div>
+              <div>
+                <p className="text-xs font-bold text-white">{user?.name}</p>
+                <p className="text-[10px] text-slate-500">{user?.role?.replace('_', ' ')}</p>
+              </div>
             </div>
+            <button onClick={handleSignOut} className="p-2 text-slate-400 hover:text-white transition-colors" title="Logout">
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
         </div>
       </aside>
@@ -86,10 +108,12 @@ export default function Layout() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <Link to="/quotations/new" className="hidden sm:flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-sm hover:bg-blue-700 active:scale-95 transition-all">
-              <Plus className="w-4 h-4" />
-              New Quotation
-            </Link>
+            {['SUPER_ADMIN', 'SALES_MANAGER', 'SALES_EXECUTIVE'].includes(user?.role || '') && (
+              <Link to="/quotations/new" className="hidden sm:flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-sm hover:bg-blue-700 active:scale-95 transition-all">
+                <Plus className="w-4 h-4" />
+                New Quotation
+              </Link>
+            )}
             <div className="w-px h-8 bg-slate-200 mx-1 sm:mx-2 hidden sm:block"></div>
             <button className="p-2 text-slate-400 hover:text-slate-600 focus:outline-none">
               <Bell className="w-5 h-5" />
@@ -113,7 +137,7 @@ export default function Layout() {
               <span className="hidden sm:inline">Last Sync: Just now</span>
             </div>
             <div>
-              QMS Enterprise v4.2.0 &copy; 2023 AZM Group
+              QMS Enterprise v4.2.0 &copy; 2026 AZM Group
             </div>
           </footer>
         </div>

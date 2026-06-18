@@ -4,13 +4,18 @@ import { Plus, Search, FileText } from 'lucide-react';
 import { formatCurrency, cn } from '../lib/utils';
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
+import { getQuotations } from '../lib/firebase';
 
 export default function Quotations() {
   const [quotations, setQuotations] = useState<Quotation[]>([]);
   const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/quotations').then(r => r.json()).then(setQuotations);
+    getQuotations().then(data => {
+      setQuotations(data);
+      setLoading(false);
+    });
   }, []);
 
   const filtered = quotations.filter(q => 

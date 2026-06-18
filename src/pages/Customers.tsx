@@ -1,13 +1,18 @@
 import { useState, useEffect } from 'react';
 import type { Customer } from '../types';
 import { Plus, Search, Building2, Phone, Mail } from 'lucide-react';
+import { getCustomers } from '../lib/firebase';
 
 export default function Customers() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/customers').then(r => r.json()).then(setCustomers);
+    getCustomers().then(data => {
+      setCustomers(data);
+      setLoading(false);
+    });
   }, []);
 
   const filtered = customers.filter(c => 

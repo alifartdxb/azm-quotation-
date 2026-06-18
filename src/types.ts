@@ -1,12 +1,13 @@
 export interface Customer {
   id: string;
-  name: string;
+  name?: string;
   companyName: string;
   contactPerson: string;
   mobile: string;
   email: string;
   address: string;
   trn: string;
+  createdAt?: string;
 }
 
 export interface Product {
@@ -34,16 +35,17 @@ export interface Quotation {
   id: string;
   quoteNo: string;
   createdAt: string;
+  customerId?: string;
   customer: Customer | null;
   validityDays: number;
-  reference: string;
-  subject: string;
+  reference?: string;
+  subject?: string;
   items: QuoteItem[];
   subTotal: number;
   discountTotal: number;
   vatAmount: number;
   grandTotal: number;
-  status: 'Pending' | 'Approved' | 'Rejected';
+  status: 'Pending' | 'Approved' | 'Rejected' | string;
   salesperson: string;
 }
 
