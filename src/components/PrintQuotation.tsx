@@ -47,8 +47,12 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
             </thead>
             <tbody className="divide-y divide-gray-300 [&>tr>td]:p-1.5 [&>tr>td]:border-x [&>tr>td]:border-gray-300">
               <tr>
-                <td className="w-1/3 font-bold bg-slate-100">Name:</td>
+                <td className="w-1/3 font-bold bg-slate-100">Company Name:</td>
                 <td>{quotation.customer?.companyName}</td>
+              </tr>
+              <tr>
+                <td className="font-bold bg-slate-100">Customer Name:</td>
+                <td>{quotation.customer?.customerName}</td>
               </tr>
               <tr>
                 <td className="font-bold bg-slate-100">Contact Person:</td>
@@ -59,6 +63,18 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
                 <td>{quotation.customer?.mobile}</td>
               </tr>
               <tr>
+                <td className="font-bold bg-slate-100">Email:</td>
+                <td>{quotation.customer?.email}</td>
+              </tr>
+              <tr>
+                <td className="font-bold bg-slate-100">Project Name:</td>
+                <td>{quotation.customer?.projectName}</td>
+              </tr>
+              <tr>
+                <td className="font-bold bg-slate-100">Site Location:</td>
+                <td>{quotation.customer?.siteLocation}</td>
+              </tr>
+              <tr>
                 <td className="font-bold bg-slate-100">Address:</td>
                 <td>{quotation.customer?.address}</td>
               </tr>
@@ -67,7 +83,7 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
                 <td>{quotation.subject}</td>
               </tr>
               <tr>
-                <td className="font-bold bg-slate-100 rounded-bl-lg">Customer TRN</td>
+                <td className="font-bold bg-slate-100 rounded-bl-lg">Customer TRN:</td>
                 <td className="rounded-br-lg">{quotation.customer?.trn}</td>
               </tr>
             </tbody>
@@ -103,7 +119,7 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
               </tr>
               <tr>
                 <td className="font-bold bg-slate-100">Reference:</td>
-                <td>{quotation.reference}</td>
+                <td>{quotation.customer?.reference}</td>
               </tr>
               <tr>
                 <td className="font-bold bg-slate-100 rounded-bl-lg">Salesperson:</td>

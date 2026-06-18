@@ -6,23 +6,32 @@ import { PrintQuotation } from '../components/PrintQuotation';
 import { Save, Printer, Plus, Trash2, ArrowLeft, Edit } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { formatCurrency } from '../lib/utils';
-import { getCustomers, getProducts, getQuotation, db, generateNextQuotationNumber, logActivity } from '../lib/firebase';
-import { collection, addDoc, updateDoc, doc, getDoc } from 'firebase/firestore';
+import { getProducts, getQuotation, db, generateNextQuotationNumber, logActivity } from '../lib/firebase';
+import { collection, addDoc, updateDoc, doc } from 'firebase/firestore';
 
 export default function QuotationBuilder() {
   const { id } = useParams();
   const navigate = useNavigate();
   
-  const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   
   const [isEditing, setIsEditing] = useState(!id);
   const [isSaving, setIsSaving] = useState(false);
 
   const [quote, setQuote] = useState<Partial<Quotation>>({
-    customer: null,
+    customer: {
+      customerName: '',
+      companyName: '',
+      contactPerson: '',
+      mobile: '',
+      email: '',
+      trn: '',
+      projectName: '',
+      siteLocation: '',
+      address: '',
+      reference: ''
+    },
     validityDays: 10,
-    reference: '',
     subject: '',
     items: [],
     status: 'Draft',
@@ -33,24 +42,14 @@ export default function QuotationBuilder() {
   const handlePrint = useReactToPrint({ contentRef: printRef });
 
   useEffect(() => {
-    Promise.all([
-      getCustomers(),
-      getProducts()
-    ]).then(([custData, prodData]) => {
-      setCustomers(custData);
+    getProducts().then(prodData => {
       setProducts(prodData);
     });
 
     if (id) {
        getQuotation(id).then(q => {
          if (q) {
-           if (q.customerId && !q.customer) {
-             getDoc(doc(db, 'customers', q.customerId)).then(cSnap => {
-                setQuote({ ...q, customer: { id: cSnap.id, ...cSnap.data()} as Customer });
-             });
-           } else {
-             setQuote(q);
-           }
+           setQuote(q);
          }
        });
     }
@@ -116,7 +115,7 @@ export default function QuotationBuilder() {
   };
 
   const handleSave = async () => {
-    if (!quote.customer) return alert("Please select a customer");
+    if (!quote.customer?.companyName && !quote.customer?.customerName) return alert("Please enter Customer or Company Name");
     setIsSaving(true);
     
     try {
@@ -125,11 +124,8 @@ export default function QuotationBuilder() {
       const quoteToSave = {
         ...quote,
         quoteNo,
-        customerId: quote.customer.id,
         createdAt: quote.createdAt || new Date().toISOString(),
       };
-      
-      delete quoteToSave.customer;
 
       if (id) {
         await updateDoc(doc(db, 'quotations', id), quoteToSave);
@@ -221,18 +217,7 @@ export default function QuotationBuilder() {
                  )}
                </div>
                
-               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                 <div>
-                   <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Select Customer</label>
-                   <select 
-                     className="w-full border border-slate-200 bg-slate-50 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                     value={quote.customer?.id || ''}
-                     onChange={e => setQuote({...quote, customer: customers.find(c => c.id === e.target.value) || null})}
-                   >
-                     <option value="">Select a customer...</option>
-                     {customers.map(c => <option key={c.id} value={c.id}>{c.companyName} ({c.contactPerson})</option>)}
-                   </select>
-                 </div>
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                  <div>
                     <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Subject</label>
                     <input type="text" className="w-full border border-slate-200 bg-slate-50 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" 
@@ -243,6 +228,62 @@ export default function QuotationBuilder() {
                     <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Validity (Days)</label>
                     <input type="number" className="w-full border border-slate-200 bg-slate-50 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" 
                       value={quote.validityDays || 10} onChange={e => setQuote({...quote, validityDays: Number(e.target.value)})} />
+                 </div>
+               </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+               <h3 className="text-sm font-bold text-slate-800 uppercase tracking-tight mb-4 border-b border-slate-100 pb-3">Customer Information</h3>
+               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                 <div>
+                   <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Company Name</label>
+                   <input type="text" className="w-full border border-slate-200 bg-slate-50 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                     value={quote.customer?.companyName || ''} onChange={e => setQuote({...quote, customer: {...quote.customer!, companyName: e.target.value}})} />
+                 </div>
+                 <div>
+                   <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Customer Name</label>
+                   <input type="text" className="w-full border border-slate-200 bg-slate-50 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                     value={quote.customer?.customerName || ''} onChange={e => setQuote({...quote, customer: {...quote.customer!, customerName: e.target.value}})} />
+                 </div>
+                 <div>
+                   <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Contact Person</label>
+                   <input type="text" className="w-full border border-slate-200 bg-slate-50 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                     value={quote.customer?.contactPerson || ''} onChange={e => setQuote({...quote, customer: {...quote.customer!, contactPerson: e.target.value}})} />
+                 </div>
+                 <div>
+                   <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Mobile Number</label>
+                   <input type="text" className="w-full border border-slate-200 bg-slate-50 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                     value={quote.customer?.mobile || ''} onChange={e => setQuote({...quote, customer: {...quote.customer!, mobile: e.target.value}})} />
+                 </div>
+                 <div>
+                   <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Email Address</label>
+                   <input type="email" className="w-full border border-slate-200 bg-slate-50 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                     value={quote.customer?.email || ''} onChange={e => setQuote({...quote, customer: {...quote.customer!, email: e.target.value}})} />
+                 </div>
+                 <div>
+                   <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">TRN Number</label>
+                   <input type="text" className="w-full border border-slate-200 bg-slate-50 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                     value={quote.customer?.trn || ''} onChange={e => setQuote({...quote, customer: {...quote.customer!, trn: e.target.value}})} />
+                 </div>
+                 <div>
+                   <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Project Name</label>
+                   <input type="text" className="w-full border border-slate-200 bg-slate-50 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                     value={quote.customer?.projectName || ''} onChange={e => setQuote({...quote, customer: {...quote.customer!, projectName: e.target.value}})} />
+                 </div>
+                 <div>
+                   <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Site Location</label>
+                   <input type="text" className="w-full border border-slate-200 bg-slate-50 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                     value={quote.customer?.siteLocation || ''} onChange={e => setQuote({...quote, customer: {...quote.customer!, siteLocation: e.target.value}})} />
+                 </div>
+                 <div className="md:col-span-2">
+                   <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Address</label>
+                   <input type="text" className="w-full border border-slate-200 bg-slate-50 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                     value={quote.customer?.address || ''} onChange={e => setQuote({...quote, customer: {...quote.customer!, address: e.target.value}})} />
+                 </div>
+                 <div className="md:col-span-2">
+                   <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Reference Number</label>
+                   <input type="text" className="w-full border border-slate-200 bg-slate-50 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                     value={quote.customer?.reference || ''} onChange={e => setQuote({...quote, customer: {...quote.customer!, reference: e.target.value}})} />
                  </div>
                </div>
             </div>

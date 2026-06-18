@@ -60,10 +60,10 @@ export default function Dashboard() {
   }
 
   const statCards = [
-    { name: 'Total Revenue (Approved)', value: formatCurrency(biMetrics.totalRevenue), icon: CheckCircle },
-    { name: 'Approval Rate', value: `${biMetrics.approvalRate}%`, icon: Clock },
-    { name: 'Average Quotation Value', value: formatCurrency(biMetrics.avgQuoteValue), icon: FileText },
-    { name: 'Total Customers', value: stats.totalCustomers, icon: Users },
+    { name: 'Total Quotations', value: stats.totalQuotes, icon: FileText },
+    { name: 'Pending Quotations', value: stats.pendingQuotes, icon: Clock },
+    { name: 'Approved Quotations', value: stats.approvedQuotes, icon: CheckCircle },
+    { name: 'Average Value', value: formatCurrency(biMetrics.avgQuoteValue), icon: CheckCircle },
   ];
 
   return (

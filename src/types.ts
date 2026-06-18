@@ -1,13 +1,14 @@
 export interface Customer {
-  id: string;
-  name?: string;
+  customerName: string;
   companyName: string;
   contactPerson: string;
   mobile: string;
   email: string;
-  address: string;
   trn: string;
-  createdAt?: string;
+  projectName: string;
+  siteLocation: string;
+  address: string;
+  reference: string;
 }
 
 export interface Product {
@@ -35,10 +36,8 @@ export interface Quotation {
   id: string;
   quoteNo: string;
   createdAt: string;
-  customerId?: string;
-  customer: Customer | null;
+  customer: Customer;
   validityDays: number;
-  reference?: string;
   subject?: string;
   items: QuoteItem[];
   subTotal: number;
@@ -52,7 +51,7 @@ export interface Quotation {
 export interface DashboardStats {
   totalQuotes: number;
   pendingQuotes: number;
-  totalCustomers: number;
+  approvedQuotes: number;
   totalProducts: number;
   recentQuotes: Quotation[];
 }

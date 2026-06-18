@@ -85,12 +85,6 @@ export const generateNextQuotationNumber = async (): Promise<string> => {
 };
 
 // Data fetching helpers
-export const getCustomers = async (): Promise<Customer[]> => {
-  const q = query(collection(db, 'customers'), orderBy('createdAt', 'desc'));
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
-};
-
 export const getProducts = async (): Promise<Product[]> => {
   const snapshot = await getDocs(collection(db, 'products'));
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
@@ -112,14 +106,13 @@ export const getQuotation = async (id: string): Promise<Quotation | null> => {
 };
 
 export const getDashboardStats = async () => {
-  const customers = await getCustomers();
   const products = await getProducts();
   const quotations = await getQuotations();
 
   return {
     totalQuotes: quotations.length,
-    pendingQuotes: quotations.filter(q => q.status === 'Pending').length,
-    totalCustomers: customers.length,
+    pendingQuotes: quotations.filter(q => q.status === 'Draft' || q.status === 'Pending Approval').length,
+    approvedQuotes: quotations.filter(q => q.status === 'Approved' || q.status === 'Converted to Order').length,
     totalProducts: products.length,
     recentQuotes: quotations.slice(0, 5),
   };

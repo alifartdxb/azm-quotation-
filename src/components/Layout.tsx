@@ -23,7 +23,6 @@ export default function Layout() {
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { name: 'Quotations', path: '/quotations', icon: FileText },
     { name: 'Products', path: '/products', icon: Package },
-    { name: 'Customers', path: '/customers', icon: Users },
   ];
 
   if (user?.role === 'SUPER_ADMIN' || user?.role === 'SALES_MANAGER') {
