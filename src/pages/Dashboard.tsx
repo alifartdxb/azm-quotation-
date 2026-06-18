@@ -5,7 +5,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import type { DashboardStats, Quotation } from '../types';
 import { getDashboardStats, getQuotations } from '../lib/firebase';
 import { format } from 'date-fns';
-import { formatCurrency } from '../lib/utils';
+import { formatCurrency, parseDate } from '../lib/utils';
 
 export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -26,7 +26,7 @@ export default function Dashboard() {
     const currentYear = new Date().getFullYear();
 
     allQuotations.forEach(q => {
-      const d = new Date(q.createdAt);
+      const d = parseDate(q.createdAt);
       if (d.getFullYear() === currentYear) {
         const monthName = format(d, 'MMM');
         if (dataByMonth[monthName] !== undefined && q.status !== 'Rejected' && q.status !== 'Expired') {

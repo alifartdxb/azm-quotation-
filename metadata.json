@@ -1,6 +1,6 @@
 {
-  "name": "",
-  "description": "",
+  "name": "Quotation Builder",
+  "description": "A professional tool for generating, managing, printing, and exporting quotations for Al Zahra Al Malakia Building Materials.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

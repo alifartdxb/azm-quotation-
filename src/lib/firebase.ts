@@ -35,51 +35,114 @@ export const logActivity = async (action: string, entityType: AuditLog['entityTy
 };
 
 export const getAppSettings = async (): Promise<AppSettings> => {
-  const docRef = doc(db, 'settings', 'global');
-  const snap = await getDoc(docRef);
-  if (snap.exists()) {
-    return snap.data() as AppSettings;
-  }
-  // Defaults
-  const defaults: AppSettings = {
-    companyNameEn: "AZM Group",
-    companyNameAr: "مجموعة العزائم",
-    trn: "100000000000000",
-    phone: "+971 50 000 0000",
-    address: "Dubai, UAE",
-    bankName: "Dubai Islamic Bank",
-    accountName: "AZM Group LLC",
-    accountNumber: "0000000000000000",
-    iban: "AE000000000000000000000",
-    defaultTerms: "1. Validity: 10 days\n2. Payment: Advance",
-    whatsappTemplate: "Hello, please review quotation {quoteNo}.",
-    quotationPrefix: "QTN-2026-",
-    quotationNextNumber: 1
+  const docs = ['company', 'bank', 'templates', 'whatsapp', 'quotation'];
+  const results = await Promise.allSettled(
+    docs.map(name => getDoc(doc(db, 'settings', name)))
+  );
+  
+  const merged: Partial<AppSettings> = {};
+  
+  const companyDefaults = {
+    companyNameEn: "Al Zahra Al Malakia Building Materials Trading L.L.C",
+    companyNameAr: "الزهــرة المـلـكـيـة لتـــجــارة مــواد الـبــنــاء ذ.م.م",
+    trn: "1002 5994 2900 003",
+    phone: "+971 4 28 444 52",
+    address: "Shop No. 12, Building Materials Mall, Dubai, U.A.E"
   };
-  await setDoc(docRef, defaults);
-  return defaults;
+  
+  const bankDefaults = {
+    bankName: "National Bank Of Ras Al Khaimah",
+    accountName: "Al Zahra Al Malakia Building Materials Trading L.L.C.",
+    accountNumber: "83621 5391 5902",
+    iban: "AE39 0400 0083 6215 3915 902"
+  };
+  
+  const templateDefaults = {
+    defaultTerms: "The above prices are in Dirhams (AED) quoted based on the quantities requested.\nPayment Terms 100% advance against order confirmation.\nDelivery time to be confirmed upon order confirmation.\nLocal delivery charges are not included within this quotation.\nCustomized items eg. counter tops/vanity cannot be cancelled or exchange after order confirmation."
+  };
+  
+  const whatsappDefaults = {
+    whatsappTemplate: "Dear {{customer_name}},\n\nPlease find attached our quotation {{quotation_no}}.\n\nThank you.\nBest Regards,\nAZM Group"
+  };
+  
+  const quotationDefaults = {
+    quotationPrefix: "QTN",
+    quotationNextNumber: 735
+  };
+  
+  results.forEach((res, idx) => {
+    const name = docs[idx];
+    if (res.status === 'fulfilled' && res.value.exists()) {
+      Object.assign(merged, res.value.data());
+    } else {
+      if (name === 'company') Object.assign(merged, companyDefaults);
+      if (name === 'bank') Object.assign(merged, bankDefaults);
+      if (name === 'templates') Object.assign(merged, templateDefaults);
+      if (name === 'whatsapp') Object.assign(merged, whatsappDefaults);
+      if (name === 'quotation') Object.assign(merged, quotationDefaults);
+    }
+  });
+  
+  return merged as AppSettings;
+};
+
+export const saveAppSettingsDoc = async (name: string, data: any): Promise<void> => {
+  const docRef = doc(db, 'settings', name);
+  await setDoc(docRef, data, { merge: true });
 };
 
 export const generateNextQuotationNumber = async (): Promise<string> => {
-  const docRef = doc(db, 'settings', 'global');
+  const counterRef = doc(db, 'counters', 'quotationCounter');
   let newQuoteNo = '';
+  const user = auth.currentUser;
   
   await runTransaction(db, async (transaction) => {
-    const snap = await transaction.get(docRef);
-    if (!snap.exists()) {
-      throw new Error("Settings document does not exist!");
+    const snap = await transaction.get(counterRef);
+    let currentNumber = 735;
+    let prefix = 'QTN';
+    let year = new Date().getFullYear();
+    if (isNaN(year) || !year) {
+      year = 2026;
     }
     
-    const data = snap.data() as AppSettings;
-    const nextNum = data.quotationNextNumber || 1;
-    const prefix = data.quotationPrefix || "QTN-";
+    if (!snap.exists()) {
+      const initialData = {
+        currentNumber: 735,
+        prefix: 'QTN',
+        year: year
+      };
+      transaction.set(counterRef, initialData);
+      currentNumber = 735;
+      prefix = 'QTN';
+    } else {
+      const data = snap.data();
+      currentNumber = (data.currentNumber || 735) + 1;
+      prefix = data.prefix || 'QTN';
+      year = data.year || year;
+    }
     
-    newQuoteNo = `${prefix}${String(nextNum).padStart(5, '0')}`;
+    newQuoteNo = `${prefix}-${year}-${String(currentNumber).padStart(6, '0')}`;
     
-    transaction.update(docRef, {
-      quotationNextNumber: nextNum + 1
+    transaction.update(counterRef, {
+      currentNumber: currentNumber
     });
   });
+  
+  if (user && newQuoteNo) {
+    try {
+      await addDoc(collection(db, 'audit_logs'), {
+        userId: user.uid,
+        userEmail: user.email || 'unknown',
+        timestamp: new Date().toISOString(),
+        quotationNumber: newQuoteNo,
+        action: 'Quotation Number Generated',
+        entityType: 'System',
+        details: `Generated quotation sequence: ${newQuoteNo}`
+      });
+    } catch (auditErr) {
+      console.error("Failed to write generator audit log:", auditErr);
+    }
+  }
   
   return newQuoteNo;
 };

@@ -3,9 +3,11 @@ import { useParams, useNavigate } from 'react-router-dom';
 import type { Quotation, Customer, Product, QuoteItem } from '../types';
 import { useReactToPrint } from 'react-to-print';
 import { PrintQuotation } from '../components/PrintQuotation';
-import { Save, Printer, Plus, Trash2, ArrowLeft, Edit } from 'lucide-react';
+import { Save, Printer, Plus, Trash2, ArrowLeft, Edit, Download } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
-import { formatCurrency } from '../lib/utils';
+import { formatCurrency, parseDate, cleanFirestoreData } from '../lib/utils';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 import { getProducts, getQuotation, db, generateNextQuotationNumber, logActivity } from '../lib/firebase';
 import { collection, addDoc, updateDoc, doc } from 'firebase/firestore';
 
@@ -40,6 +42,66 @@ export default function QuotationBuilder() {
 
   const printRef = useRef<HTMLDivElement>(null);
   const handlePrint = useReactToPrint({ contentRef: printRef });
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+
+  const handleDownloadPdf = async () => {
+    if (!printRef.current) return;
+    setIsDownloadingPdf(true);
+    
+    try {
+      const element = printRef.current;
+      
+      // html2canvas config for optimal PDF page layout and high crisp factor
+      const canvas = await html2canvas(element, {
+        scale: 2, // 2x device pixel ratio for super crisp text and borders
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+        backgroundColor: '#ffffff'
+      });
+      
+      const imgData = canvas.toDataURL('image/png', 1.0);
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+      
+      const imgWidth = 210; // A4 width in mm
+      const pageHeight = 297; // A4 height in mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let heightLeft = imgHeight;
+      let position = 0;
+      
+      // Page 1
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
+      heightLeft -= pageHeight;
+      
+      // Additional multi-page spill-over pages
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
+        heightLeft -= pageHeight;
+      }
+      
+      const sanitizeName = (name: string) => name.replace(/[/\\?%*:|"<>]/g, '-').trim();
+      const company = quote.customer?.companyName || quote.customer?.customerName || 'Customer';
+      const quoteNo = quote.quoteNo || 'Draft';
+      const docName = sanitizeName(`Quotation_${quoteNo}_${company}.pdf`);
+      
+      pdf.save(docName);
+      
+      if (id) {
+        await logActivity('Downloaded PDF', 'Quotation', id, `Downloaded PDF copy for individual quote ${quoteNo}`);
+      }
+    } catch (err) {
+      console.error('Failed to download PDF:', err);
+      alert('Failed to generate PDF. You can still use the "Print / PDF" option as a fallback.');
+    } finally {
+      setIsDownloadingPdf(false);
+    }
+  };
 
   useEffect(() => {
     getProducts().then(prodData => {
@@ -121,11 +183,11 @@ export default function QuotationBuilder() {
     try {
       const quoteNo = quote.quoteNo || await generateNextQuotationNumber();
 
-      const quoteToSave = {
+      const quoteToSave = cleanFirestoreData({
         ...quote,
         quoteNo,
         createdAt: quote.createdAt || new Date().toISOString(),
-      };
+      });
 
       if (id) {
         await updateDoc(doc(db, 'quotations', id), quoteToSave);
@@ -184,6 +246,14 @@ export default function QuotationBuilder() {
                 className="bg-[#25D366] hover:bg-[#20b858] text-white px-5 py-2 rounded-lg flex items-center gap-2 text-sm font-semibold transition-all shadow-sm active:scale-95"
               >
                 <span>Send WhatsApp</span>
+              </button>
+              <button 
+                disabled={isDownloadingPdf}
+                onClick={handleDownloadPdf}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-lg flex items-center gap-2 text-sm font-semibold transition-all shadow-sm active:scale-95 disabled:opacity-50"
+              >
+                <Download className="w-4 h-4" />
+                <span>{isDownloadingPdf ? 'Generating PDF...' : 'Download PDF'}</span>
               </button>
               <button onClick={() => handlePrint()} className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg flex items-center gap-2 text-sm font-semibold transition-all shadow-sm active:scale-95">
                 <Printer className="w-4 h-4" />

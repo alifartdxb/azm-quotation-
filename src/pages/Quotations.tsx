@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { Quotation } from '../types';
 import { Plus, Search, FileText } from 'lucide-react';
-import { formatCurrency, cn } from '../lib/utils';
+import { formatCurrency, cn, parseDate } from '../lib/utils';
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
 import { getQuotations } from '../lib/firebase';
@@ -87,7 +87,7 @@ export default function Quotations() {
                     <p className="text-[11px] text-slate-500">{quote.customer?.contactPerson}</p>
                   </td>
                   <td className="px-6 py-4 text-xs text-slate-500">
-                    {format(new Date(quote.createdAt), 'MMM dd, yyyy')}
+                    {format(parseDate(quote.createdAt), 'MMM dd, yyyy')}
                   </td>
                   <td className="px-6 py-4 text-right">
                     <span className="font-mono text-sm font-medium text-slate-900">{formatCurrency(quote.grandTotal)}</span>

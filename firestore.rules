@@ -12,11 +12,15 @@ service cloud.firestore {
     }
     
     function isSuperAdmin() {
-      return isAuthenticated() && getUserRole() == 'SUPER_ADMIN';
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'SUPER_ADMIN';
     }
     
     function isManager() {
-      return isAuthenticated() && getUserRole() in ['SUPER_ADMIN', 'SALES_MANAGER'];
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['SUPER_ADMIN', 'SALES_MANAGER']);
     }
 
     match /users/{userId} {
@@ -37,8 +41,12 @@ service cloud.firestore {
     }
     
     match /settings/{document=**} {
-      allow read: if isAuthenticated();
-      allow write: if isManager();
+      allow read: if isManager();
+      allow write: if isSuperAdmin();
+    }
+    
+    match /counters/{document=**} {
+      allow read, write: if isAuthenticated();
     }
     
     match /audit_logs/{document=**} {

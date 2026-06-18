@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Quotation } from '../types';
-import { formatCurrency } from '../lib/utils';
+import { formatCurrency, parseDate } from '../lib/utils';
 import { format } from 'date-fns';
 
 interface Props {
@@ -107,7 +107,7 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
               </tr>
               <tr>
                 <td className="font-bold bg-slate-100">Date:</td>
-                <td>{format(new Date(quotation.createdAt), 'dd MMM yyyy')}</td>
+                <td>{format(parseDate(quotation.createdAt), 'dd MMM yyyy')}</td>
               </tr>
               <tr>
                 <td className="font-bold bg-slate-100">Validity:</td>
