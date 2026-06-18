@@ -45,7 +45,7 @@ export interface Quotation {
   discountTotal: number;
   vatAmount: number;
   grandTotal: number;
-  status: 'Pending' | 'Approved' | 'Rejected' | string;
+  status: 'Draft' | 'Pending Approval' | 'Approved' | 'Rejected' | 'Sent' | 'Expired' | 'Converted to Order' | string;
   salesperson: string;
 }
 
@@ -55,4 +55,32 @@ export interface DashboardStats {
   totalCustomers: number;
   totalProducts: number;
   recentQuotes: Quotation[];
+}
+
+export interface AuditLog {
+  id: string;
+  userId: string;
+  userEmail: string;
+  action: string;
+  entityType: 'Product' | 'Customer' | 'Quotation' | 'Settings' | 'System';
+  entityId?: string;
+  details: string;
+  timestamp: string;
+}
+
+export interface AppSettings {
+  id?: string;
+  companyNameEn: string;
+  companyNameAr: string;
+  trn: string;
+  phone: string;
+  address: string;
+  bankName: string;
+  accountName: string;
+  accountNumber: string;
+  iban: string;
+  defaultTerms: string;
+  whatsappTemplate: string;
+  quotationPrefix: string;
+  quotationNextNumber: number;
 }

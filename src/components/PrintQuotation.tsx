@@ -124,12 +124,13 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
             <th>Qty</th>
             <th>Unit</th>
             <th>Unit Price</th>
+            <th>Discount</th>
             <th>Total Amount</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-300 [&>tr>td]:p-2 [&>tr>td]:border-x [&>tr>td]:border-gray-300">
           {quotation.items.map((item, index) => (
-            <tr key={item.id}>
+            <tr key={item.id} className="page-break-inside-avoid">
               <td>{index + 1}</td>
               <td className="text-left">
                 <div className="font-bold text-gray-800">{item.product.sku}</div>
@@ -142,10 +143,11 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
                   <div className="w-16 h-16 bg-gray-100 m-auto text-gray-400 text-xs flex items-center justify-center">No Img</div>
                 )}
               </td>
-              <td>{item.qty.toFixed(2)}</td>
+              <td>{item.qty}</td>
               <td>{item.product.unit}</td>
-              <td className="text-right">{item.unitPrice.toFixed(2)}</td>
-              <td className="text-right font-medium">{(item.qty * item.unitPrice).toFixed(2)}</td>
+              <td className="text-right">{formatCurrency(item.unitPrice)}</td>
+              <td className="text-right">{item.discountAmt > 0 ? formatCurrency(item.discountAmt) : '-'}</td>
+              <td className="text-right font-medium">{formatCurrency(item.total)}</td>
             </tr>
           ))}
         </tbody>
@@ -157,21 +159,27 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
         <div className="flex-1">
           <h4 className="font-bold text-sm mb-1 uppercase text-gray-900">Bank Details:</h4>
           <div className="text-[11px] leading-tight space-y-0.5 text-gray-800">
-            <p><span className="font-bold">Bank Name:</span> National Bank Of Ras Al Khaimah</p>
-            <p><span className="font-bold">Account:</span> Al Zahra Al Malakia Building Materials Trading L.L.C.</p>
-            <p><span className="font-bold">Account Number:</span> 83621 5391 5902</p>
-            <p><span className="font-bold">IBAN Number:</span> AE39 0400 0083 6215 3915 902</p>
+            <p><span className="font-bold">Bank Name:</span> Dubai Islamic Bank</p>
+            <p><span className="font-bold">Account:</span> AZM Group LLC</p>
+            <p><span className="font-bold">Account Number:</span> 0000000000000000</p>
+            <p><span className="font-bold">IBAN Number:</span> AE0000000000000000</p>
           </div>
         </div>
 
         {/* Totals */}
-        <div className="w-[30%]">
+        <div className="w-[35%]">
            <table className="w-full border-collapse border border-gray-300 text-right">
              <tbody className="divide-y divide-gray-300 [&>tr>td]:p-2 [&>tr>td]:border-x [&>tr>td]:border-gray-300">
                 <tr>
                   <td className="font-bold w-1/2">Sub Total</td>
                   <td className="font-bold">{formatCurrency(quotation.subTotal)}</td>
                 </tr>
+                {quotation.discountTotal > 0 && (
+                  <tr>
+                    <td className="font-bold text-red-600">Discount</td>
+                    <td className="font-bold text-red-600">-{formatCurrency(quotation.discountTotal)}</td>
+                  </tr>
+                )}
                 <tr>
                   <td className="font-bold bg-slate-100">VAT 5%</td>
                   <td className="bg-slate-100">{formatCurrency(quotation.vatAmount)}</td>

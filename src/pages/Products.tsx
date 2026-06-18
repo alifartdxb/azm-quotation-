@@ -139,10 +139,15 @@ export default function Products() {
     }
   };
 
-  const filtered = products.filter(p => 
-    p.name.toLowerCase().includes(search.toLowerCase()) || 
-    p.sku.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = products.filter(p => {
+    const s = search.toLowerCase();
+    return (
+      (p.name && p.name.toLowerCase().includes(s)) || 
+      (p.sku && p.sku.toLowerCase().includes(s)) ||
+      (p.brand && p.brand.toLowerCase().includes(s)) ||
+      (p.category && p.category.toLowerCase().includes(s))
+    );
+  });
 
   return (
     <div className="space-y-6">

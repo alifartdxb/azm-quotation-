@@ -15,10 +15,16 @@ export default function Customers() {
     });
   }, []);
 
-  const filtered = customers.filter(c => 
-    c.name.toLowerCase().includes(search.toLowerCase()) || 
-    c.companyName.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = customers.filter(c => {
+    const s = search.toLowerCase();
+    return (
+      (c.name && c.name.toLowerCase().includes(s)) || 
+      (c.companyName && c.companyName.toLowerCase().includes(s)) ||
+      (c.mobile && c.mobile.toLowerCase().includes(s)) ||
+      (c.trn && c.trn.toLowerCase().includes(s)) ||
+      (c.contactPerson && c.contactPerson.toLowerCase().includes(s))
+    );
+  });
 
   return (
     <div className="space-y-6">

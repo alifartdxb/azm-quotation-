@@ -18,10 +18,15 @@ export default function Quotations() {
     });
   }, []);
 
-  const filtered = quotations.filter(q => 
-    q.quoteNo.toLowerCase().includes(search.toLowerCase()) || 
-    q.customer?.companyName.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = quotations.filter(q => {
+    const s = search.toLowerCase();
+    return (
+      (q.quoteNo && q.quoteNo.toLowerCase().includes(s)) || 
+      (q.customer?.companyName && q.customer.companyName.toLowerCase().includes(s)) ||
+      (q.status && q.status.toLowerCase().includes(s)) ||
+      (q.salesperson && q.salesperson.toLowerCase().includes(s))
+    );
+  });
 
   return (
     <div className="space-y-6">
@@ -90,8 +95,12 @@ export default function Quotations() {
                   <td className="px-6 py-4 text-center">
                     <span className={cn(
                       "px-2.5 py-1 rounded-full text-[10px] font-bold inline-block",
-                      quote.status === 'Pending' ? "bg-amber-100 text-amber-700" :
+                      quote.status === 'Draft' ? "bg-slate-100 text-slate-700" :
+                      quote.status === 'Pending Approval' ? "bg-amber-100 text-amber-700" :
                       quote.status === 'Approved' ? "bg-emerald-100 text-emerald-700" :
+                      quote.status === 'Rejected' ? "bg-red-100 text-red-700" :
+                      quote.status === 'Sent' ? "bg-blue-100 text-blue-700" :
+                      quote.status === 'Converted to Order' ? "bg-purple-100 text-purple-700" :
                       "bg-slate-100 text-slate-700"
                     )}>
                       {quote.status.toUpperCase()}

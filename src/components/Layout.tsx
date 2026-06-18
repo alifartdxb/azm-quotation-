@@ -1,16 +1,8 @@
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Users, Package, FileText, Settings, LogOut, Menu, Search, Plus, Bell } from "lucide-react";
+import { LayoutDashboard, Users, Package, FileText, Settings, LogOut, Menu, Search, Plus, Bell, Activity } from "lucide-react";
 import { useState } from "react";
 import { cn } from "../lib/utils";
 import { useAuth } from "../contexts/AuthContext";
-
-const NAV_ITEMS = [
-  { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-  { name: 'Quotations', path: '/quotations', icon: FileText },
-  { name: 'Products', path: '/products', icon: Package },
-  { name: 'Customers', path: '/customers', icon: Users },
-  { name: 'Settings', path: '/settings', icon: Settings },
-];
 
 export default function Layout() {
   const location = useLocation();
@@ -26,6 +18,21 @@ export default function Layout() {
       console.error('Failed to log out', error);
     }
   };
+
+  const navItems = [
+    { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+    { name: 'Quotations', path: '/quotations', icon: FileText },
+    { name: 'Products', path: '/products', icon: Package },
+    { name: 'Customers', path: '/customers', icon: Users },
+  ];
+
+  if (user?.role === 'SUPER_ADMIN' || user?.role === 'SALES_MANAGER') {
+    navItems.push({ name: 'Settings', path: '/settings', icon: Settings });
+  }
+
+  if (user?.role === 'SUPER_ADMIN') {
+    navItems.push({ name: 'Audit Logs', path: '/audit-logs', icon: Activity });
+  }
 
   return (
     <div className="flex h-screen bg-slate-50 font-sans overflow-hidden">
@@ -53,7 +60,7 @@ export default function Layout() {
         </div>
 
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-          {NAV_ITEMS.map((item) => {
+          {navItems.map((item) => {
             const isActive = location.pathname.startsWith(item.path);
             return (
               <Link

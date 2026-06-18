@@ -6,7 +6,7 @@ import { PrintQuotation } from '../components/PrintQuotation';
 import { Save, Printer, Plus, Trash2, ArrowLeft, Edit } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { formatCurrency } from '../lib/utils';
-import { getCustomers, getProducts, getQuotation, db } from '../lib/firebase';
+import { getCustomers, getProducts, getQuotation, db, generateNextQuotationNumber, logActivity } from '../lib/firebase';
 import { collection, addDoc, updateDoc, doc, getDoc } from 'firebase/firestore';
 
 export default function QuotationBuilder() {
@@ -25,7 +25,7 @@ export default function QuotationBuilder() {
     reference: '',
     subject: '',
     items: [],
-    status: 'Pending',
+    status: 'Draft',
     salesperson: 'Ahmed Abdullah'
   });
 
@@ -86,7 +86,8 @@ export default function QuotationBuilder() {
       (item as any)[field] = value;
     }
     
-    item.total = (item.qty * item.unitPrice) - item.discountAmt;
+    // Float precision fix
+    item.total = Math.round(((item.qty * item.unitPrice) - item.discountAmt) * 100) / 100;
     newItems[index] = item;
     
     recalculateTotals(newItems);
@@ -107,10 +108,10 @@ export default function QuotationBuilder() {
     setQuote(prev => ({
       ...prev,
       items,
-      subTotal,
-      discountTotal,
-      vatAmount,
-      grandTotal
+      subTotal: Math.round(subTotal * 100) / 100,
+      discountTotal: Math.round(discountTotal * 100) / 100,
+      vatAmount: Math.round(vatAmount * 100) / 100,
+      grandTotal: Math.round(grandTotal * 100) / 100
     }));
   };
 
@@ -118,23 +119,25 @@ export default function QuotationBuilder() {
     if (!quote.customer) return alert("Please select a customer");
     setIsSaving(true);
     
-    const quoteNo = quote.quoteNo || `QTN${new Date().getFullYear()}${String(new Date().getMonth()+1).padStart(2,'0')}${Math.floor(Math.random() * 1000).toString().padStart(4,'0')}`;
-
-    const quoteToSave = {
-      ...quote,
-      quoteNo,
-      customerId: quote.customer.id,
-      createdAt: quote.createdAt || new Date().toISOString(),
-    };
-    
-    delete quoteToSave.customer;
-
     try {
+      const quoteNo = quote.quoteNo || await generateNextQuotationNumber();
+
+      const quoteToSave = {
+        ...quote,
+        quoteNo,
+        customerId: quote.customer.id,
+        createdAt: quote.createdAt || new Date().toISOString(),
+      };
+      
+      delete quoteToSave.customer;
+
       if (id) {
         await updateDoc(doc(db, 'quotations', id), quoteToSave);
+        await logActivity('Updated Quotation', 'Quotation', id, `Updated status to ${quote.status}`);
         setIsEditing(false);
       } else {
         const docRef = await addDoc(collection(db, 'quotations'), quoteToSave);
+        await logActivity('Created Quotation', 'Quotation', docRef.id, `Created quote ${quoteNo}`);
         navigate(`/quotations/${docRef.id}`);
       }
     } catch (err) {
@@ -207,9 +210,13 @@ export default function QuotationBuilder() {
                       value={quote.status}
                       onChange={e => setQuote({...quote, status: e.target.value})}
                     >
-                      <option value="Pending">Pending</option>
+                      <option value="Draft">Draft</option>
+                      <option value="Pending Approval">Pending Approval</option>
                       <option value="Approved">Approved</option>
                       <option value="Rejected">Rejected</option>
+                      <option value="Sent">Sent</option>
+                      <option value="Expired">Expired</option>
+                      <option value="Converted to Order">Converted to Order</option>
                     </select>
                  )}
                </div>

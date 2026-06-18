@@ -1,0 +1,59 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Auth helpers
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+    
+    function isSuperAdmin() {
+      return isAuthenticated() && getUserRole() == 'SUPER_ADMIN';
+    }
+    
+    function isManager() {
+      return isAuthenticated() && getUserRole() in ['SUPER_ADMIN', 'SALES_MANAGER'];
+    }
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isSuperAdmin() || request.auth.uid == userId;
+    }
+    
+    match /customers/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+    
+    match /products/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isManager();
+    }
+    
+    match /quotations/{document=**} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isManager();
+    }
+    
+    match /settings/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isManager();
+    }
+    
+    match /audit_logs/{document=**} {
+      allow read: if isSuperAdmin();
+      allow create: if isAuthenticated();
+      allow update, delete: if false; // Immutable audit logs
+    }
+    
+    match /{document=**} {
+      allow read, write: if isSuperAdmin();
+    }
+  }
+}
