@@ -57,10 +57,10 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
       </div>
 
       {/* Meta Tables */}
-      <div className="flex gap-4 mb-6">
+      <div className="flex gap-4 mb-6 items-stretch">
         {/* Customer Info */}
-        <div className="flex-1">
-          <table className="w-full border-collapse border border-gray-300">
+        <div className="flex-1 flex flex-col">
+          <table className="w-full h-full border-collapse border border-gray-300">
             <thead>
               <tr>
                 <th colSpan={2} className="bg-[#1e8d98] text-white text-center py-1.5 uppercase tracking-widest text-sm rounded-t-lg">
@@ -78,24 +78,12 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
                 <td>{safeCustomer.customerName}</td>
               </tr>
               <tr>
-                <td className="font-bold bg-slate-100">Contact Person:</td>
-                <td>{safeCustomer.contactPerson}</td>
-              </tr>
-              <tr>
                 <td className="font-bold bg-slate-100">Contact No.:</td>
                 <td>{safeCustomer.mobile}</td>
               </tr>
               <tr>
                 <td className="font-bold bg-slate-100">Email:</td>
                 <td>{safeCustomer.email}</td>
-              </tr>
-              <tr>
-                <td className="font-bold bg-slate-100">Project Name:</td>
-                <td>{safeCustomer.projectName}</td>
-              </tr>
-              <tr>
-                <td className="font-bold bg-slate-100">Site Location:</td>
-                <td>{safeCustomer.siteLocation}</td>
               </tr>
               <tr>
                 <td className="font-bold bg-slate-100">Address:</td>
@@ -114,8 +102,8 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
         </div>
 
         {/* Quotation Info */}
-        <div className="w-[35%]">
-          <table className="w-full border-collapse border border-gray-300">
+        <div className="w-[35%] flex flex-col">
+          <table className="w-full h-full border-collapse border border-gray-300">
             <thead>
               <tr>
                 <th colSpan={2} className="bg-blue-800 text-white text-center py-1.5 uppercase tracking-widest text-sm rounded-t-lg">
@@ -157,14 +145,13 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
       <table className="w-full border-collapse border border-gray-300 mb-6 text-center">
         <thead>
           <tr className="bg-slate-100 border-b border-gray-300 [&>th]:p-2 [&>th]:border-x [&>th]:border-gray-300 [&>th]:font-bold text-sm">
-            <th className="w-12">Sr. No.</th>
-            <th className="text-left w-1/3">Item Description</th>
-            <th className="w-24">Picture</th>
-            <th>Qty</th>
-            <th>Unit</th>
-            <th>Unit Price</th>
-            <th>Discount</th>
-            <th>Total Amount</th>
+            <th className="w-[6%]">Sr. No.</th>
+            <th className="text-left w-[44%]">Item Description</th>
+            <th className="w-[14%]">Picture</th>
+            <th className="w-[8%]">Qty</th>
+            <th className="w-[8%]">Unit</th>
+            <th className="text-right w-[10%]">Unit Price</th>
+            <th className="text-right w-[10%]">Total Amount</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-300 [&>tr>td]:p-2 [&>tr>td]:border-x [&>tr>td]:border-gray-300">
@@ -177,7 +164,7 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
               </td>
               <td className="p-1">
                 {item.product?.image ? (
-                  <img src={item.product.image} alt={item.product.sku} className="w-16 h-16 object-contain m-auto" />
+                  <img src={item.product.image} alt={item.product.sku} className="w-16 h-16 object-contain m-auto" referrerPolicy="no-referrer" />
                 ) : (
                   <div className="w-16 h-16 bg-gray-100 m-auto text-gray-400 text-xs flex items-center justify-center">No Img</div>
                 )}
@@ -185,7 +172,6 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
               <td>{item.qty}</td>
               <td>{item.product?.unit || 'Pcs'}</td>
               <td className="text-right">{formatCurrency(item.unitPrice)}</td>
-              <td className="text-right">{item.discountAmt > 0 ? formatCurrency(item.discountAmt) : '-'}</td>
               <td className="text-right font-medium">{formatCurrency(item.total)}</td>
             </tr>
           ))}
@@ -213,12 +199,6 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
                   <td className="font-bold w-1/2">Sub Total</td>
                   <td className="font-bold">{formatCurrency(safeSubTotal)}</td>
                 </tr>
-                {safeDiscountTotal > 0 && (
-                  <tr>
-                    <td className="font-bold text-red-600">Discount</td>
-                    <td className="font-bold text-red-600">-{formatCurrency(safeDiscountTotal)}</td>
-                  </tr>
-                )}
                 <tr>
                   <td className="font-bold bg-slate-100">VAT 5%</td>
                   <td className="bg-slate-100">{formatCurrency(safeVatAmount)}</td>

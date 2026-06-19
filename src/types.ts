@@ -1,12 +1,12 @@
 export interface Customer {
   customerName: string;
   companyName: string;
-  contactPerson: string;
+  contactPerson?: string;
   mobile: string;
   email: string;
   trn: string;
-  projectName: string;
-  siteLocation: string;
+  projectName?: string;
+  siteLocation?: string;
   address: string;
   reference: string;
 }
@@ -28,7 +28,7 @@ export interface QuoteItem {
   product: Product;
   qty: number;
   unitPrice: number;
-  discountAmt: number;
+  discountAmt?: number;
   total: number;
 }
 
@@ -41,7 +41,7 @@ export interface Quotation {
   subject?: string;
   items: QuoteItem[];
   subTotal: number;
-  discountTotal: number;
+  discountTotal?: number;
   vatAmount: number;
   grandTotal: number;
   status: 'Draft' | 'Pending Approval' | 'Approved' | 'Rejected' | 'Sent' | 'Expired' | 'Converted to Order' | string;

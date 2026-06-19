@@ -41,7 +41,7 @@ service cloud.firestore {
     }
     
     match /settings/{document=**} {
-      allow read: if isManager();
+      allow read: if isAuthenticated();
       allow write: if isSuperAdmin();
     }
     

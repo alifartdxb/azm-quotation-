@@ -84,7 +84,7 @@ export default function Quotations() {
                   </td>
                   <td className="px-6 py-4">
                     <p className="text-sm font-semibold text-slate-800">{quote.customer?.companyName || 'Unknown'}</p>
-                    <p className="text-[11px] text-slate-500">{quote.customer?.contactPerson}</p>
+                    <p className="text-[11px] text-slate-500">{quote.customer?.customerName}</p>
                   </td>
                   <td className="px-6 py-4 text-xs text-slate-500">
                     {format(parseDate(quote.createdAt), 'MMM dd, yyyy')}

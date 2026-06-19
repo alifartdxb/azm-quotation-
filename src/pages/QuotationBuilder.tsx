@@ -110,24 +110,47 @@ function QuotationBuilder() {
       try {
         setLoadingPhase('settings');
         // Step 1: Load settings
-        const settings = await getAppSettings();
+        let settings;
+        try {
+          settings = await getAppSettings();
+        } catch (err: any) {
+          console.error("Step 1 (Load settings) failed:", err);
+          throw new Error(`Step 1 (Load settings) failed: ${err.message || err}`);
+        }
         
         let nextQuoteNo = '';
         if (!id) {
           // New Quote
           setLoadingPhase('quoteNo');
           // Step 2: Generate quotation number
-          nextQuoteNo = await generateNextQuotationNumber();
+          try {
+            nextQuoteNo = await generateNextQuotationNumber();
+          } catch (err: any) {
+            console.error("Step 2 (Generate quotation number) failed:", err);
+            throw new Error(`Step 2 (Generate quotation number) failed: ${err.message || err}`);
+          }
         }
 
         setLoadingPhase('products');
         // Step 3: Load products catalogue
-        const prodData = await getProducts();
+        let prodData;
+        try {
+          prodData = await getProducts();
+        } catch (err: any) {
+          console.error("Step 3 (Load products catalogue) failed:", err);
+          throw new Error(`Step 3 (Load products catalogue) failed: ${err.message || err}`);
+        }
         setProducts(prodData || []);
 
         if (id) {
           setLoadingPhase('quotation');
-          const q = await getQuotation(id);
+          let q;
+          try {
+            q = await getQuotation(id);
+          } catch (err: any) {
+            console.error("Step 4 (Load quotation document) failed:", err);
+            throw new Error(`Step 4 (Load quotation document) failed: ${err.message || err}`);
+          }
           if (q) {
             setQuote({
               customer: q.customer || {
@@ -234,7 +257,7 @@ function QuotationBuilder() {
     }
     
     // Float precision fix
-    item.total = Math.round(((item.qty * item.unitPrice) - item.discountAmt) * 100) / 100;
+    item.total = Math.round((item.qty * item.unitPrice) * 100) / 100;
     newItems[index] = item;
     
     recalculateTotals(newItems);
@@ -247,16 +270,14 @@ function QuotationBuilder() {
 
   const recalculateTotals = (items: QuoteItem[]) => {
     const subTotal = items.reduce((sum, item) => sum + (item.qty * item.unitPrice), 0);
-    const discountTotal = items.reduce((sum, item) => sum + Number(item.discountAmt), 0);
-    const netTotal = subTotal - discountTotal;
-    const vatAmount = netTotal * 0.05;
-    const grandTotal = netTotal + vatAmount;
+    const vatAmount = subTotal * 0.05;
+    const grandTotal = subTotal + vatAmount;
 
     setQuote(prev => ({
       ...prev,
       items,
       subTotal: Math.round(subTotal * 100) / 100,
-      discountTotal: Math.round(discountTotal * 100) / 100,
+      discountTotal: 0,
       vatAmount: Math.round(vatAmount * 100) / 100,
       grandTotal: Math.round(grandTotal * 100) / 100
     }));
@@ -441,7 +462,7 @@ function QuotationBuilder() {
 
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
                <h3 className="text-sm font-bold text-slate-800 uppercase tracking-tight mb-4 border-b border-slate-100 pb-3">Customer Information</h3>
-               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                  <div>
                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Company Name</label>
                    <input type="text" className="w-full border border-slate-200 bg-slate-50 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
@@ -451,11 +472,6 @@ function QuotationBuilder() {
                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Customer Name</label>
                    <input type="text" className="w-full border border-slate-200 bg-slate-50 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                      value={quote.customer?.customerName || ''} onChange={e => setQuote({...quote, customer: {...quote.customer!, customerName: e.target.value}})} />
-                 </div>
-                 <div>
-                   <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Contact Person</label>
-                   <input type="text" className="w-full border border-slate-200 bg-slate-50 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                     value={quote.customer?.contactPerson || ''} onChange={e => setQuote({...quote, customer: {...quote.customer!, contactPerson: e.target.value}})} />
                  </div>
                  <div>
                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Mobile Number</label>
@@ -473,24 +489,14 @@ function QuotationBuilder() {
                      value={quote.customer?.trn || ''} onChange={e => setQuote({...quote, customer: {...quote.customer!, trn: e.target.value}})} />
                  </div>
                  <div>
-                   <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Project Name</label>
-                   <input type="text" className="w-full border border-slate-200 bg-slate-50 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                     value={quote.customer?.projectName || ''} onChange={e => setQuote({...quote, customer: {...quote.customer!, projectName: e.target.value}})} />
-                 </div>
-                 <div>
-                   <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Site Location</label>
-                   <input type="text" className="w-full border border-slate-200 bg-slate-50 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                     value={quote.customer?.siteLocation || ''} onChange={e => setQuote({...quote, customer: {...quote.customer!, siteLocation: e.target.value}})} />
-                 </div>
-                 <div className="md:col-span-2">
-                   <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Address</label>
-                   <input type="text" className="w-full border border-slate-200 bg-slate-50 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                     value={quote.customer?.address || ''} onChange={e => setQuote({...quote, customer: {...quote.customer!, address: e.target.value}})} />
-                 </div>
-                 <div className="md:col-span-2">
                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Reference Number</label>
                    <input type="text" className="w-full border border-slate-200 bg-slate-50 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                      value={quote.customer?.reference || ''} onChange={e => setQuote({...quote, customer: {...quote.customer!, reference: e.target.value}})} />
+                 </div>
+                 <div className="md:col-span-2 lg:col-span-3">
+                   <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Address</label>
+                   <input type="text" className="w-full border border-slate-200 bg-slate-50 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                     value={quote.customer?.address || ''} onChange={e => setQuote({...quote, customer: {...quote.customer!, address: e.target.value}})} />
                  </div>
                </div>
             </div>
@@ -510,7 +516,6 @@ function QuotationBuilder() {
                       <th className="px-4 py-3 w-1/3">Product</th>
                       <th className="px-4 py-3">Qty</th>
                       <th className="px-4 py-3">Unit Price</th>
-                      <th className="px-4 py-3">Disc. Amt</th>
                       <th className="px-4 py-3 text-right">Total</th>
                       <th className="px-4 py-3"></th>
                     </tr>
@@ -535,10 +540,6 @@ function QuotationBuilder() {
                         <td className="py-3 px-4">
                           <input type="number" className="w-28 border border-slate-200 bg-white rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" 
                              value={item.unitPrice} onChange={e => updateItem(idx, 'unitPrice', Number(e.target.value))} />
-                        </td>
-                        <td className="py-3 px-4">
-                          <input type="number" className="w-24 border border-slate-200 bg-white rounded-md p-2 text-sm text-red-600 focus:ring-2 focus:ring-blue-500 outline-none font-medium" 
-                             value={item.discountAmt} onChange={e => updateItem(idx, 'discountAmt', Number(e.target.value))} />
                         </td>
                         <td className="py-3 px-4 text-right font-mono font-medium text-slate-900 text-sm">
                           {formatCurrency(item.total)}
@@ -566,10 +567,6 @@ function QuotationBuilder() {
                       <div className="flex justify-between text-sm text-slate-600">
                         <span>Subtotal</span>
                         <span className="font-mono font-medium text-slate-900">{formatCurrency(quote.subTotal || 0)}</span>
-                      </div>
-                      <div className="flex justify-between text-sm text-slate-600">
-                        <span>Discount</span>
-                        <span className="font-mono font-medium text-red-600">-{formatCurrency(quote.discountTotal || 0)}</span>
                       </div>
                       <div className="flex justify-between text-sm text-slate-600 border-b border-slate-200 pb-3">
                         <span>VAT (5%)</span>
