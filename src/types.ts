@@ -84,4 +84,6 @@ export interface AppSettings {
   whatsappTemplate: string;
   quotationPrefix: string;
   quotationNextNumber: number;
+  headerImage?: string;
+  footerImage?: string;
 }

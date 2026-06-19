@@ -115,20 +115,20 @@ function QuotationBuilder() {
       const imagesToLoad = quote.items.filter(item => item.product?.image);
       const preloaded: Record<string, string> = {};
 
-      const loadImagesPromise = Promise.all(
-        imagesToLoad.map(async (item) => {
-          if (item.product?.image && item.product?.sku) {
-            try {
-              const base64 = await convertImgToBase64(item.product.image);
-              if (base64) {
-                preloaded[item.product.sku] = base64;
-              }
-            } catch (imageErr) {
-              console.warn(`Failed to convert image for sku ${item.product.sku}:`, imageErr);
-            }
+      let headerBase64 = '';
+      let footerBase64 = '';
+      const promises: Promise<any>[] = imagesToLoad.map(async (item) => {
+        if (item.product?.image && item.product?.sku) {
+          try {
+            const base64 = await convertImgToBase64(item.product.image);
+            if (base64) preloaded[item.product.sku] = base64;
+          } catch (imageErr) {
+            console.warn(`Failed to convert image for sku ${item.product.sku}:`, imageErr);
           }
-        })
-      );
+        }
+      });
+
+      const loadImagesPromise = Promise.all(promises);
 
       // Give images up to 6 seconds to pre-load, but don't fail the whole PDF if some fail or timeout
       const timeoutPromise = new Promise((_, reject) =>
@@ -172,145 +172,204 @@ function QuotationBuilder() {
 
       const totalPagesExp = '{total_pages_count_string}';
 
+      const addPdfImage = (doc: any, dataUrl: string, x: number, y: number, w: number, h?: number) => {
+        try {
+          const typeMatch = dataUrl.match(/^data:image\/(png|jpeg|jpg|webp);base64,/i);
+          let format = 'JPEG';
+          if (typeMatch && typeMatch[1]) {
+             format = typeMatch[1].toUpperCase();
+             if (format === 'JPG') format = 'JPEG';
+          }
+          
+          let drawHeight = h;
+          if (!drawHeight) {
+             const props = doc.getImageProperties(dataUrl);
+             drawHeight = (w / props.width) * props.height;
+          }
+          
+          doc.addImage(dataUrl, format, x, y, w, drawHeight);
+        } catch (e) {
+          console.warn("PDF AddImage failed", e);
+        }
+      };
+
+      let headerHeight = 28;
+      if (appSettings?.headerImage) {
+          const props = pdf.getImageProperties(appSettings.headerImage);
+          headerHeight = (200 / props.width) * props.height;
+      }
+      
+      let footerHeight = 16;
+      if (appSettings?.footerImage) {
+          const props = pdf.getImageProperties(appSettings.footerImage);
+          footerHeight = (200 / props.width) * props.height;
+      }
+
       const drawHeaderAndFooter = (pageNum: number) => {
         // --- HEADER ---
-        pdf.setFillColor(233, 243, 246);
-        pdf.rect(12, 10, 186, 18, 'F'); // Light Cyan Background
+        if (appSettings?.headerImage) {
+          addPdfImage(pdf, appSettings.headerImage, 5, 0, 200, headerHeight);
+        } else {
+          pdf.setFillColor(233, 243, 246);
+          pdf.rect(5, 5, 200, 18, 'F'); // Light Cyan Background
 
-        pdf.setTextColor(83, 144, 154);
-        pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(16);
-        pdf.text("Al Zahra Al Malakia", 16, 17);
-        pdf.setTextColor(60, 120, 130);
-        pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(9);
-        pdf.text("Building Materials Trading L.L.C", 16, 23);
+          const companyEn = appSettings?.companyNameEn || 'Al Zahra Al Malakia\nBuilding Materials Trading L.L.C';
+          const parts = companyEn.split('\n');
+          
+          pdf.setTextColor(83, 144, 154);
+          pdf.setFont('helvetica', 'bold');
+          pdf.setFontSize(16);
+          pdf.text(parts[0] || "Al Zahra Al Malakia", 10, 12);
+          pdf.setTextColor(60, 120, 130);
+          pdf.setFont('helvetica', 'normal');
+          pdf.setFontSize(9);
+          pdf.text(parts[1] || "Building Materials Trading L.L.C", 10, 18);
 
-        // Logo Center
-        pdf.setFillColor(255, 255, 255);
-        pdf.setDrawColor(83, 144, 154);
-        pdf.setLineWidth(0.5);
-        
-        pdf.rect(98, 9, 14, 20, 'FD'); // Box
-        pdf.setTextColor(26, 58, 92);
-        pdf.setFontSize(11);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text("AZM", 105, 20, { align: 'center' });
+          // Logo Center
+          pdf.setFillColor(255, 255, 255);
+          pdf.setDrawColor(83, 144, 154);
+          pdf.setLineWidth(0.5);
+          
+          pdf.rect(98, 4, 14, 20, 'FD'); // Box
+          pdf.setTextColor(26, 58, 92);
+          pdf.setFontSize(11);
+          pdf.setFont('helvetica', 'bold');
+          pdf.text("AZM", 105, 15, { align: 'center' });
 
-        // Arabic Side 
-        pdf.setTextColor(83, 144, 154);
-        pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(14);
-        // Using basic fallback text since jsPDF core lacks Arabic shaping.
-        pdf.text("الزهرة الملكية", 194, 17, { align: 'right' });
-        pdf.setTextColor(60, 120, 130);
-        pdf.setFontSize(9);
-        pdf.setFont('helvetica', 'normal');
-        pdf.text("لتجارة مواد البناء ذ.م.م", 194, 23, { align: 'right' });
+          // Arabic Side 
+          pdf.setTextColor(83, 144, 154);
+          pdf.setFont('helvetica', 'bold');
+          pdf.setFontSize(14);
+          // Using basic fallback text since jsPDF core lacks Arabic shaping.
+          const companyAr = appSettings?.companyNameAr || 'الزهرة الملكية\nلتجارة مواد البناء ذ.م.م';
+          const partsAr = companyAr.split('\n');
+          
+          pdf.text(partsAr[0] || "الزهرة الملكية", 200, 12, { align: 'right' });
+          pdf.setTextColor(60, 120, 130);
+          pdf.setFontSize(9);
+          pdf.setFont('helvetica', 'normal');
+          pdf.text(partsAr[1] || "لتجارة مواد البناء ذ.م.م", 200, 18, { align: 'right' });
 
-        // Contact Info Line
-        pdf.setTextColor(83, 144, 154);
-        pdf.setFontSize(8.5);
-        pdf.setFont('helvetica', 'normal');
-        pdf.text("Tel: +971 4 28 444 52  |  Add.: Shop No. 12, Building Materials Mall, Dubai, U.A.E  |  Email: office@alzahrabm.com", 105, 34, { align: 'center' });
+          // Contact Info Line
+          pdf.setTextColor(83, 144, 154);
+          pdf.setFontSize(8.5);
+          pdf.setFont('helvetica', 'normal');
+          
+          const phone = appSettings?.phone || '+971 4 28 444 52';
+          const address = appSettings?.address || 'Shop No. 12, Building Materials Mall, Dubai, U.A.E';
+          
+          pdf.text(`Tel: ${phone}  |  Add.: ${address}  |  Email: office@alzahrabm.com`, 105, 29, { align: 'center' });
+        }
 
         // --- FOOTER ---
         const pageHeight = 297;
-        
-        // Brands
-        pdf.setFontSize(10);
-        pdf.setFont('helvetica', 'bold');
-        pdf.setTextColor(30, 58, 138);
-
-        const brands = ["VADO", "Jaquar", "ITALIAN STANDARDS", "NOURK", "SANIT", "KLUDI RAK", "SONET"];
-        const spacing = 180 / (brands.length - 1);
-        brands.forEach((brand, idx) => {
-          pdf.text(brand, 15 + idx * spacing, pageHeight - 17, { align: idx === 0 ? 'left' : idx === brands.length - 1 ? 'right' : 'center' });
-        });
-
-        // Banner Base
         const bannerStartY = pageHeight - 12;
-        pdf.setFillColor(83, 144, 154); // Teal
-        pdf.rect(0, bannerStartY, 70, 12, 'F');
-        pdf.setFillColor(26, 58, 92); // Navy
-        pdf.rect(70, bannerStartY, 140, 12, 'F');
         
-        // Slant (creates an angled cut)
-        pdf.setFillColor(26, 58, 92);
-        pdf.triangle(63, bannerStartY + 12, 70, bannerStartY, 70, bannerStartY + 12, 'F');
+        if (appSettings?.footerImage) {
+          addPdfImage(pdf, appSettings.footerImage, 5, pageHeight - footerHeight, 200, footerHeight);
+          
+          pdf.setTextColor(150, 150, 150);
+          pdf.setFontSize(8);
+          pdf.setFont('helvetica', 'normal');
+          pdf.text(`Page ${pageNum} of ${totalPagesExp}`, 105, pageHeight - 3, { align: 'center' });
+        } else {
+          // Brands
+          pdf.setFontSize(10);
+          pdf.setFont('helvetica', 'bold');
+          pdf.setTextColor(30, 58, 138);
 
-        pdf.setTextColor(255, 255, 255);
-        pdf.setFontSize(9);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text("www.alzahrabm.com", 15, bannerStartY + 7.5);
-        pdf.text("Empowering Projects. Shaping spaces.", 195, bannerStartY + 7.5, { align: 'right' });
-        
-        // Page Number
-        pdf.setTextColor(255, 255, 255);
-        pdf.setFontSize(8);
-        pdf.setFont('helvetica', 'normal');
-        pdf.text(`Page ${pageNum} of ${totalPagesExp}`, 105, bannerStartY + 7.5, { align: 'center' });
+          const brands = ["VADO", "Jaquar", "ITALIAN STANDARDS", "NOURK", "SANIT", "KLUDI RAK", "SONET"];
+          const spacing = 190 / (brands.length - 1);
+          brands.forEach((brand, idx) => {
+            pdf.text(brand, 10 + idx * spacing, pageHeight - 17, { align: idx === 0 ? 'left' : idx === brands.length - 1 ? 'right' : 'center' });
+          });
+
+          // Banner Base
+          pdf.setFillColor(83, 144, 154); // Teal
+          pdf.rect(0, bannerStartY, 70, 12, 'F');
+          pdf.setFillColor(26, 58, 92); // Navy
+          pdf.rect(70, bannerStartY, 140, 12, 'F');
+          
+          // Slant (creates an angled cut)
+          pdf.setFillColor(26, 58, 92);
+          pdf.triangle(63, bannerStartY + 12, 70, bannerStartY, 70, bannerStartY + 12, 'F');
+
+          pdf.setTextColor(255, 255, 255);
+          pdf.setFontSize(9);
+          pdf.setFont('helvetica', 'bold');
+          pdf.text("www.alzahrabm.com", 15, bannerStartY + 7.5);
+          pdf.text("Empowering Projects. Shaping spaces.", 195, bannerStartY + 7.5, { align: 'right' });
+          
+          // Page Number
+          pdf.setTextColor(255, 255, 255);
+          pdf.setFontSize(8);
+          pdf.setFont('helvetica', 'normal');
+          pdf.text(`Page ${pageNum} of ${totalPagesExp}`, 105, bannerStartY + 7.5, { align: 'center' });
+        }
       };
 
       let currentPage = 1;
       drawHeaderAndFooter(currentPage);
 
-      // Left-side Customer Info Table
+      const tablesStartY = appSettings?.headerImage ? headerHeight + 5 : 35;
+
+      // Draw Left Info table
       autoTable(pdf, {
-        startY: 42,
-        margin: { left: 15 },
-        tableWidth: 92,
+        startY: tablesStartY,
+        margin: { left: 5 },
+        tableWidth: 110,
         theme: 'grid',
-        styles: { fontSize: 8, cellPadding: 2, font: 'helvetica' },
+        styles: { fontSize: 8, cellPadding: { top: 3, bottom: 3, left: 4, right: 4 }, font: 'helvetica' },
         headStyles: { fillColor: [30, 141, 152], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
-        bodyStyles: { minCellHeight: 6 },
+        columnStyles: {
+          0: { cellWidth: 35, fontStyle: 'bold', fillColor: [248, 250, 252] },
+          1: { cellWidth: 'auto', textColor: [51, 65, 85] }
+        },
+        head: [[{ content: 'CUSTOMER INFO', colSpan: 2 }]],
+        body: [
+          ['Customer Name:', safeCustomer.customerName || '-'],
+          ['Contact No.:', safeCustomer.mobile || '-'],
+          ['Email:', safeCustomer.email || '-'],
+          ['Address:', safeCustomer.address || '-'],
+          ['Subject:', safeSubject || '-'],
+          ['Customer TRN:', safeCustomer.trn || '-']
+        ]
+      });
+
+      // Draw Right Info table
+      autoTable(pdf, {
+        startY: tablesStartY,
+        margin: { left: 125 },
+        tableWidth: 80,
+        theme: 'grid',
+        styles: { fontSize: 8, cellPadding: { top: 3, bottom: 3, left: 4, right: 4 }, font: 'helvetica' },
+        headStyles: { fillColor: [30, 58, 138], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
         columnStyles: {
           0: { cellWidth: 28, fontStyle: 'bold', fillColor: [248, 250, 252] },
-          1: { cellWidth: 'auto' }
+          1: { cellWidth: 'auto', textColor: [51, 65, 85] }
         },
-        head: [[{ content: 'Customer Info', colSpan: 2 }]],
+        head: [[{ content: 'QUOTATION', colSpan: 2 }]],
         body: [
-          ['Customer Name', safeCustomer.customerName || '-'],
-          ['Contact No.', safeCustomer.mobile || '-'],
-          ['Email', safeCustomer.email || '-'],
-          ['Address', safeCustomer.address || '-'],
-          ['Subject', safeSubject || '-'],
-          ['Customer TRN', safeCustomer.trn || '-']
+          ['No.:', safeQuoteNo],
+          ['Date:', format(parseDate(quote.createdAt), 'dd MMM yyyy')],
+          ['Validity:', `${safeValidityDays} Days`],
+          ['TRN:', appSettings?.trn || '1002 5994 2900 003'],
+          ['Salesperson:', safeSalesperson]
         ]
       });
 
-      // Right-side Quotation Table
-      autoTable(pdf, {
-        startY: 42,
-        margin: { left: 113 },
-        tableWidth: 82,
-        theme: 'grid',
-        styles: { fontSize: 8, cellPadding: 2, font: 'helvetica' },
-        headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
-        bodyStyles: { minCellHeight: 6 },
-        columnStyles: {
-          0: { cellWidth: 26, fontStyle: 'bold', fillColor: [248, 250, 252] },
-          1: { cellWidth: 'auto' }
-        },
-        head: [[{ content: 'Quotation', colSpan: 2 }]],
-        body: [
-          ['No.', safeQuoteNo],
-          ['Date', format(parseDate(quote.createdAt), 'dd MMM yyyy')],
-          ['Validity', `${safeValidityDays} Days`],
-          ['TRN', '1002 5994 2900 003'],
-          ['Salesperson', safeSalesperson]
-        ]
-      });
-
-      // Rows for core items table
       const tableRows = safeItems.map((item, index) => {
-        const itemDesc = item.productId === 'MANUAL' 
-          ? (item.product?.name || 'Manual Item')
-          : `${item.product?.sku || ''}\n${item.product?.name || ''}`;
+        let itemDesc = '';
+        if (item.productId === 'MANUAL') {
+          itemDesc = item.product?.name || 'Manual Item';
+        } else {
+          itemDesc = `${item.product?.sku || ''}\n${item.product?.name || ''}`;
+        }
+        
         return [
           index + 1,
           itemDesc,
-          '', // Image cell drawn in didDrawCell
+          '',
           item.qty || 0,
           item.product?.unit || 'Pcs',
           formatCurrency(item.unitPrice || 0),
@@ -318,53 +377,41 @@ function QuotationBuilder() {
         ];
       });
 
-      const headFinalY = (pdf as any).lastAutoTable.finalY + 5;
+      const headFinalY = (pdf as any).lastAutoTable.finalY + 15;
+
+      const bottomMargin = appSettings?.footerImage ? footerHeight + 5 : 20;
 
       // Draw Main Items table
       autoTable(pdf, {
         startY: headFinalY,
-        margin: { left: 15, right: 15, top: 40, bottom: 25 },
+        margin: { left: 5, right: 5, top: tablesStartY, bottom: bottomMargin },
         theme: 'grid',
-        styles: { valign: 'middle', fontSize: 8.5, cellPadding: 3, font: 'helvetica' },
-        headStyles: { fillColor: [45, 108, 122], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center', lineWidth: 0.2, lineColor: [200, 200, 200] },
-        bodyStyles: { minCellHeight: 14 },
+        styles: { valign: 'middle', fontSize: 8.5, cellPadding: 4, font: 'helvetica' },
+        headStyles: { fillColor: [248, 250, 252], textColor: [15, 23, 42], fontStyle: 'bold', halign: 'center', lineWidth: 0.1, lineColor: [226, 232, 240] },
+        bodyStyles: { minCellHeight: 16, lineColor: [226, 232, 240], lineWidth: 0.1 },
         columnStyles: {
-          0: { cellWidth: 12, halign: 'center' },
-          1: { cellWidth: 'auto', halign: 'left' },
-          2: { cellWidth: 20, halign: 'center', minCellHeight: 14 },
-          3: { cellWidth: 12, halign: 'center' },
-          4: { cellWidth: 14, halign: 'center' },
-          5: { cellWidth: 24, halign: 'right' },
-          6: { cellWidth: 26, halign: 'right' }
+          0: { cellWidth: 12, halign: 'center' }, // Item No.
+          1: { cellWidth: 72, halign: 'left' },   // Item Description
+          2: { cellWidth: 20, halign: 'center' }, // Picture
+          3: { cellWidth: 16, halign: 'center' }, // Quantity
+          4: { cellWidth: 16, halign: 'center' }, // Unit
+          5: { cellWidth: 32, halign: 'right' },  // Unit Price
+          6: { cellWidth: 32, halign: 'right' }   // Total Amount
         },
         head: [
           ['Sr. No.', 'Item Description', 'Picture', 'Qty', 'Unit', 'Unit Price', 'Total Amount']
         ],
         body: tableRows,
-        didDrawCell: (data) => {
-          if (data.column.index === 2 && data.cell.section === 'body') {
+        didDrawCell: (data: any) => {
+          if (data.section === 'body' && data.column.index === 2) {
             const item = safeItems[data.row.index];
-            if (item) {
-              const imgData = item.productId === 'MANUAL' 
-                ? item.product?.image 
-                : (item.product?.sku ? preloaded[item.product.sku] : null);
-              
-              if (imgData) {
-                const imgSize = 10;
-                const xPos = data.cell.x + (data.cell.width - imgSize) / 2;
-                const yPos = data.cell.y + (data.cell.height - imgSize) / 2;
-                try {
-                  pdf.addImage(imgData, 'PNG', xPos, yPos, imgSize, imgSize);
-                } catch (err) {
-                  console.error("Error drawing cell image:", err);
-                }
-              } else {
-                pdf.setFontSize(7.5);
-                pdf.setFont('helvetica', 'normal');
-                pdf.setTextColor(150);
-                const xPos = data.cell.x + data.cell.width / 2;
-                const yPos = data.cell.y + data.cell.height / 2 + 2;
-                pdf.text("No Img", xPos, yPos, { align: 'center' });
+            if (item && item.product && item.product.sku) {
+              const base64 = preloaded[item.product.sku]; // Use the local preloaded object, not state
+              if (base64) {
+                const dim = 16;
+                const x = data.cell.x + (data.cell.width / 2) - (dim / 2);
+                const y = data.cell.y + (data.cell.height / 2) - (dim / 2);
+                addPdfImage(pdf, base64, x, y, dim, dim);
               }
             }
           }
@@ -381,48 +428,48 @@ function QuotationBuilder() {
       let finalY = (pdf as any).lastAutoTable.finalY || 106;
       const requiredFooterHeight = 85;
       
-      if (finalY + requiredFooterHeight > 272) {
+      if (finalY + requiredFooterHeight > 297 - bottomMargin) {
         pdf.addPage();
         currentPage++;
         drawHeaderAndFooter(currentPage);
-        finalY = 40;
+        finalY = tablesStartY;
       }
 
       const footerStartY = finalY + 8;
 
       // Draw Bank Details block on the left
       pdf.setFillColor(248, 250, 252);
-      pdf.rect(15, footerStartY, 110, 26, 'F');
+      pdf.rect(5, footerStartY, 115, 26, 'F');
       pdf.setDrawColor(226, 232, 240);
       pdf.setLineWidth(0.25);
-      pdf.rect(15, footerStartY, 110, 26, 'D');
+      pdf.rect(5, footerStartY, 115, 26, 'D');
 
       pdf.setTextColor(15, 23, 42);
       pdf.setFont('helvetica', 'bold');
       pdf.setFontSize(8.5);
-      pdf.text("Bank Details:", 19, footerStartY + 5);
+      pdf.text("Bank Details:", 9, footerStartY + 5);
 
       pdf.setFont('helvetica', 'normal');
       pdf.setFontSize(7.5);
       pdf.setTextColor(51, 65, 85);
-      pdf.text("Bank Name:", 19, footerStartY + 10);
+      pdf.text("Bank Name:", 9, footerStartY + 10);
       pdf.setFont('helvetica', 'bold');
-      pdf.text(appSettings?.bankName || "Dubai Islamic Bank", 42, footerStartY + 10);
+      pdf.text(appSettings?.bankName || "Dubai Islamic Bank", 32, footerStartY + 10);
 
       pdf.setFont('helvetica', 'normal');
-      pdf.text("Account Name:", 19, footerStartY + 14);
+      pdf.text("Account Name:", 9, footerStartY + 14);
       pdf.setFont('helvetica', 'bold');
-      pdf.text(appSettings?.accountName || "AZM Group LLC", 42, footerStartY + 14);
+      pdf.text(appSettings?.accountName || "AZM Group LLC", 32, footerStartY + 14);
 
       pdf.setFont('helvetica', 'normal');
-      pdf.text("Account Number:", 19, footerStartY + 18);
+      pdf.text("Account Number:", 9, footerStartY + 18);
       pdf.setFont('helvetica', 'bold');
-      pdf.text(appSettings?.accountNumber || "0000000000000000", 42, footerStartY + 18);
+      pdf.text(appSettings?.accountNumber || "0000000000000000", 32, footerStartY + 18);
 
       pdf.setFont('helvetica', 'normal');
-      pdf.text("IBAN Number:", 19, footerStartY + 22);
+      pdf.text("IBAN Number:", 9, footerStartY + 22);
       pdf.setFont('helvetica', 'bold');
-      pdf.text(appSettings?.iban || "AE0000000000000000", 42, footerStartY + 22);
+      pdf.text(appSettings?.iban || "AE0000000000000000", 32, footerStartY + 22);
 
       // Draw Totals side-table on the right
       const totalsBody: string[][] = [
@@ -440,13 +487,13 @@ function QuotationBuilder() {
 
       autoTable(pdf, {
         startY: footerStartY,
-        margin: { left: 130 },
-        tableWidth: 65,
+        margin: { left: 125 },
+        tableWidth: 80,
         theme: 'grid',
         styles: { fontSize: 8, cellPadding: 2, font: 'helvetica' },
         columnStyles: {
-          0: { cellWidth: 28, halign: 'left', fontStyle: 'bold', fillColor: [248, 250, 252] },
-          1: { cellWidth: 37, halign: 'right', fontStyle: 'bold' }
+          0: { cellWidth: 35, halign: 'left', fontStyle: 'bold', fillColor: [248, 250, 252] },
+          1: { cellWidth: 45, halign: 'right', fontStyle: 'bold' }
         },
         body: totalsBody,
         didParseCell: (data) => {
@@ -468,15 +515,15 @@ function QuotationBuilder() {
       const termsStartY = footerStartY + 30;
 
       pdf.setFontSize(8.5);
-      pdf.setTextColor(15, 23, 42);
+      pdf.setTextColor(15, 23, 42); // slate-900
       pdf.setFont('helvetica', 'bold');
-      pdf.text("Terms & Conditions:", 15, termsStartY + 4);
+      pdf.text("Terms & Conditions:", 5, termsStartY + 4);
 
       pdf.setFontSize(7);
       pdf.setFont('helvetica', 'normal');
-      pdf.setTextColor(51, 65, 85);
+      pdf.setTextColor(51, 65, 85); // slate-700
 
-      const terms = [
+      let terms = [
         "1. The above prices are in Dirhams (AED) quoted based on the quantities requested.",
         "2. Payment Terms 100% advance against order confirmation.",
         "3. Delivery time to be confirmed upon order confirmation.",
@@ -484,51 +531,56 @@ function QuotationBuilder() {
         "5. Customized items eg. counter tops/vanity cannot be cancelled or exchanged after confirmation."
       ];
 
+      if (appSettings?.defaultTerms) {
+        terms = appSettings.defaultTerms.split('\n').filter((t: string) => t.trim() !== '').map((t: string, idx: number) => `${idx + 1}. ${t.trim()}`);
+      }
+
       let termY = termsStartY + 8;
       terms.forEach(term => {
-        pdf.text(term, 15, termY);
+        pdf.text(term, 5, termY);
         termY += 3.5;
       });
 
       // Customer's signature line
       pdf.setLineWidth(0.25);
       pdf.setDrawColor(15, 23, 42);
-      pdf.line(15, termY + 8, 65, termY + 8);
-
-      pdf.setFontSize(7.5);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text("Customer's Signature", 15, termY + 12);
-
-      // Authorized signature & stamp on the right
-      pdf.setFontSize(7.5);
-      pdf.setFont('helvetica', 'normal');
-      pdf.setTextColor(51, 65, 85);
-      pdf.text("For ", 130, termsStartY + 4);
-      pdf.setFont('helvetica', 'bold');
-      pdf.setTextColor(15, 43, 114);
-      pdf.text("AL ZAHRA AL MALAKIA", 135, termsStartY + 4);
-
-      pdf.setFont('helvetica', 'normal');
-      pdf.setTextColor(51, 65, 85);
-      pdf.text("Building Materials Trading LLC", 130, termsStartY + 8);
-
-      // Stamp representation
-      pdf.setDrawColor(15, 43, 114);
-      pdf.setLineWidth(0.2);
-      pdf.circle(162, termsStartY + 20, 8, 'S');
-      pdf.setFontSize(5);
-      pdf.setTextColor(15, 43, 114);
-      pdf.text("COMPANY STAMP", 162, termsStartY + 20.5, { align: 'center' });
-
-      // Authorized Signature line
-      pdf.setLineWidth(0.25);
-      pdf.setDrawColor(15, 23, 42);
-      pdf.line(130, termsStartY + 30, 195, termsStartY + 30);
+      pdf.line(5, termY + 8, 55, termY + 8);
 
       pdf.setFontSize(7.5);
       pdf.setFont('helvetica', 'bold');
       pdf.setTextColor(15, 23, 42);
-      pdf.text("Authorised Signature", 130, termsStartY + 34);
+      pdf.text("Customer's Signature", 5, termY + 12);
+
+      // Authorized signature & stamp on the right
+      pdf.setFontSize(7.5);
+      pdf.setFont('helvetica', 'italic');
+      pdf.setTextColor(51, 65, 85);
+      pdf.text("For ", 125, termsStartY + 4);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(15, 43, 114);
+      pdf.text("AL ZAHRA AL MALAKIA", 131, termsStartY + 4);
+
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(51, 65, 85);
+      pdf.text("Building Materials Trading LLC", 125, termsStartY + 8);
+
+      // Stamp representation
+      pdf.setDrawColor(15, 43, 114);
+      pdf.setLineWidth(0.2);
+      pdf.circle(162, termsStartY + 18, 9, 'S');
+      pdf.setFontSize(5);
+      pdf.setTextColor(15, 43, 114);
+      pdf.text("COMPANY STAMP", 162, termsStartY + 19, { align: 'center', angle: -15 });
+
+      // Authorized Signature line
+      pdf.setLineWidth(0.25);
+      pdf.setDrawColor(15, 23, 42);
+      pdf.line(125, termsStartY + 30, 195, termsStartY + 30);
+
+      pdf.setFontSize(7.5);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(15, 23, 42);
+      pdf.text("Authorised Signature", 125, termsStartY + 34);
 
       // 4. Multi-pass page counting replacement
       if (typeof pdf.putTotalPages === 'function') {
@@ -728,7 +780,7 @@ function QuotationBuilder() {
     }));
   };
 
-  const updateItem = (index: number, field: keyof QuoteItem | 'manualName' | 'manualUnit', value: any) => {
+  const updateItem = (index: number, field: keyof QuoteItem | 'manualName' | 'manualUnit' | 'manualImage', value: any) => {
     const newItems = [...(quote.items || [])];
     const item = { ...newItems[index] };
     

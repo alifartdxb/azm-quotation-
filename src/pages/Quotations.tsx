@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import type { Quotation } from '../types';
-import { Plus, Search, FileText } from 'lucide-react';
+import { Plus, Search, FileText, Trash2 } from 'lucide-react';
 import { formatCurrency, cn, parseDate } from '../lib/utils';
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
-import { getQuotations } from '../lib/firebase';
+import { getQuotations, deleteQuotation, logActivity } from '../lib/firebase';
 
 export default function Quotations() {
   const [quotations, setQuotations] = useState<Quotation[]>([]);
@@ -12,11 +12,29 @@ export default function Quotations() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    loadQuotations();
+  }, []);
+
+  const loadQuotations = () => {
+    setLoading(true);
     getQuotations().then(data => {
       setQuotations(data);
       setLoading(false);
     });
-  }, []);
+  };
+
+  const handleDelete = async (id: string, quoteNo: string) => {
+    if (window.confirm(`Are you sure you want to delete quotation ${quoteNo}? This action cannot be undone.`)) {
+      try {
+        await deleteQuotation(id);
+        await logActivity('Quotation Deleted', 'Quotation', id, `Deleted quotation ${quoteNo}`);
+        loadQuotations();
+      } catch (error) {
+        console.error("Error deleting quotation:", error);
+        alert("Failed to delete quotation.");
+      }
+    }
+  };
 
   const filtered = quotations.filter(q => {
     const s = search.toLowerCase();
@@ -110,6 +128,13 @@ export default function Quotations() {
                     <Link to={`/quotations/${quote.id}`} className="text-[11px] text-blue-600 font-semibold hover:underline opacity-0 group-hover:opacity-100 transition-opacity">
                       View / Print
                     </Link>
+                    <button
+                      onClick={() => handleDelete(quote.id as string, quote.quoteNo)}
+                      className="text-slate-400 hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100"
+                      title="Delete Quotation"
+                    >
+                      <Trash2 className="w-4 h-4 inline-block" />
+                    </button>
                   </td>
                 </tr>
               ))}

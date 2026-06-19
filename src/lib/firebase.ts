@@ -35,7 +35,7 @@ export const logActivity = async (action: string, entityType: AuditLog['entityTy
 };
 
 export const getAppSettings = async (): Promise<AppSettings> => {
-  const docs = ['company', 'bank', 'templates', 'whatsapp', 'quotation'];
+  const docs = ['company', 'bank', 'templates', 'whatsapp', 'quotation', 'branding'];
   const results = await Promise.allSettled(
     docs.map(name => getDoc(doc(db, 'settings', name)))
   );
@@ -154,6 +154,10 @@ export const getQuotations = async (): Promise<Quotation[]> => {
   const q = query(collection(db, 'quotations'), orderBy('createdAt', 'desc'));
   const snapshot = await getDocs(q);
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Quotation));
+};
+
+export const deleteQuotation = async (id: string): Promise<void> => {
+  await deleteDoc(doc(db, 'quotations', id));
 };
 
 export const getQuotation = async (id: string): Promise<Quotation | null> => {

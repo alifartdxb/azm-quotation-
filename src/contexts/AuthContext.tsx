@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { auth, db } from '../lib/firebase';
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut as firebaseSignOut, User } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 export type Role = 'SUPER_ADMIN' | 'SALES_MANAGER' | 'SALES_EXECUTIVE' | 'VIEWER';
 
@@ -39,10 +39,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           role = docSnap.data().role as Role;
           name = docSnap.data().name || name;
         } else {
-          // Fallback or setup first admin (for demo purposes)
-           if (firebaseUser.email === 'admin@azmgroup.com') {
+          // Fallback or setup first admin
+           if (firebaseUser.email?.toLowerCase() === 'admin@azmgroup.com' || firebaseUser.email?.toLowerCase() === 'alifartdxb@gmail.com') {
              role = 'SUPER_ADMIN';
              name = 'System Admin';
+           }
+           
+           try {
+             await setDoc(docRef, {
+               email: firebaseUser.email,
+               role: role,
+               name: name,
+               createdAt: new Date().toISOString()
+             });
+           } catch (e) {
+             console.error("Could not write user doc on init", e);
            }
         }
 

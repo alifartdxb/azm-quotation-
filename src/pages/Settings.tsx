@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Save, Building2, Landmark, FileText, Share2, Download, Upload, Database, Lock, ShieldAlert, CheckCircle, RefreshCw } from 'lucide-react';
+import { Save, Building2, Landmark, FileText, Share2, Download, Upload, Database, Lock, ShieldAlert, CheckCircle, RefreshCw, Image as ImageIcon } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { getAppSettings, saveAppSettingsDoc, db, logActivity } from '../lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -31,6 +31,9 @@ export default function Settings() {
 
   const [defaultTerms, setDefaultTerms] = useState('');
   const [whatsappTemplate, setWhatsappTemplate] = useState('');
+
+  const [headerImage, setHeaderImage] = useState('');
+  const [footerImage, setFooterImage] = useState('');
 
   // Counters live values state (Only for Super Admin to manage/view)
   const [counterCurrentNumber, setCounterCurrentNumber] = useState(735);
@@ -67,6 +70,9 @@ export default function Settings() {
 
         setDefaultTerms(settings.defaultTerms || '');
         setWhatsappTemplate(settings.whatsappTemplate || '');
+
+        setHeaderImage(settings.headerImage || '');
+        setFooterImage(settings.footerImage || '');
 
         // Load live counter configuration if Super Admin
         if (isSuperAdmin) {
@@ -117,6 +123,10 @@ export default function Settings() {
         const whatsappData = { whatsappTemplate };
         await saveAppSettingsDoc('whatsapp', whatsappData);
         await logActivity('WhatsApp Settings Updated', 'Settings', 'whatsapp', 'Updated default messages template');
+      } else if (activeTab === 'branding') {
+        const brandingData = { headerImage, footerImage };
+        await saveAppSettingsDoc('branding', brandingData);
+        await logActivity('Branding Settings Updated', 'Settings', 'branding', 'Updated PDF header/footer images');
       } else if (activeTab === 'counters') {
         // Super Admin updating counter properties
         const counterRef = doc(db, 'counters', 'quotationCounter');
@@ -174,6 +184,10 @@ export default function Settings() {
           whatsapp: {
             whatsappTemplate: settings.whatsappTemplate || '',
           },
+          branding: {
+            headerImage: settings.headerImage || '',
+            footerImage: settings.footerImage || ''
+          }
         },
         counters: {
           quotationCounter: counterConf
@@ -229,6 +243,7 @@ export default function Settings() {
         if (s.bank) await saveAppSettingsDoc('bank', s.bank);
         if (s.templates) await saveAppSettingsDoc('templates', s.templates);
         if (s.whatsapp) await saveAppSettingsDoc('whatsapp', s.whatsapp);
+        if (s.branding) await saveAppSettingsDoc('branding', s.branding);
 
         // Restore counter
         if (json.counters?.quotationCounter) {
@@ -260,6 +275,10 @@ export default function Settings() {
         if (s.whatsapp) {
           setWhatsappTemplate(s.whatsapp.whatsappTemplate || '');
         }
+        if (s.branding) {
+          setHeaderImage(s.branding.headerImage || '');
+          setFooterImage(s.branding.footerImage || '');
+        }
         if (json.counters?.quotationCounter) {
           const c = json.counters.quotationCounter;
           setCounterCurrentNumber(c.currentNumber || 735);
@@ -278,6 +297,48 @@ export default function Settings() {
       }
     };
     reader.readAsText(file);
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, setter: (val: string) => void) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      if (event.target?.result) {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+
+          // Compression
+          const MAX_WIDTH = 1000;
+          if (width > MAX_WIDTH) {
+            height = Math.round((height * MAX_WIDTH) / width);
+            width = MAX_WIDTH;
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            // Fill background white in case of transparent png
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(0, 0, width, height);
+            ctx.drawImage(img, 0, 0, width, height);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+            setter(dataUrl);
+          } else {
+            setter(event.target!.result as string);
+          }
+        };
+        img.src = event.target.result as string;
+      }
+    };
+    reader.readAsDataURL(file);
+    // Reset file input so same file can be selected again
+    e.target.value = '';
   };
 
   // Guard for Loading State
@@ -395,6 +456,16 @@ export default function Settings() {
               }`}
             >
               <Share2 className="w-4 h-4" /> Email & WhatsApp
+            </button>
+            <button
+              onClick={() => setActiveTab('branding')}
+              className={`flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all ${
+                activeTab === 'branding' 
+                  ? 'bg-blue-600 text-white shadow-md' 
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-950'
+              }`}
+            >
+              <ImageIcon className="w-4 h-4" /> PDF Branding
             </button>
             {isSuperAdmin && (
               <button
@@ -581,6 +652,83 @@ export default function Settings() {
                         className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none h-32 font-mono resize-none transition-all disabled:opacity-70" 
                       />
                       <p className="text-[11px] text-slate-400 mt-2 italic font-medium">Available wildcards: {"{{customer_name}}, {{quotation_no}}"}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* BRANDING TAB */}
+              {activeTab === 'branding' && (
+                <div className="space-y-6 animate-fadeIn">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                    <h3 className="text-lg font-bold text-slate-900">PDF Branding</h3>
+                    <ImageIcon className="w-5 h-5 text-slate-400" />
+                  </div>
+                  <p className="text-sm text-slate-500">Upload custom header and footer images for your printed quotations. Ideal dimensions are A4 width (e.g. 2480px) at high resolution.</p>
+                  
+                  <div className="space-y-8">
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-4">Header Image</label>
+                      {headerImage ? (
+                        <div className="relative inline-block w-full max-w-2xl bg-slate-100 border border-slate-200 rounded-[20px] overflow-hidden group">
+                          <img src={headerImage} alt="Header Preview" className="w-full h-auto block" />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <button
+                              type="button"
+                              disabled={isSalesManager}
+                              onClick={() => setHeaderImage('')}
+                              className="bg-white text-red-600 px-4 py-2 font-bold text-sm rounded-lg shadow-sm"
+                            >
+                              Remove Header
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="relative border-2 border-dashed border-slate-300 rounded-[20px] p-8 text-center hover:border-blue-500 hover:bg-blue-50 transition-colors">
+                          <input 
+                            type="file" 
+                            accept="image/png, image/jpeg, image/webp"
+                            disabled={isSalesManager}
+                            onChange={(e) => handleImageUpload(e, setHeaderImage)}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                          />
+                          <ImageIcon className="w-8 h-8 text-slate-400 mx-auto mb-3" />
+                          <p className="text-sm font-semibold text-slate-700">Click or drag image to upload header</p>
+                          <p className="text-xs text-slate-500 mt-1">Recommended width: up to 1200px</p>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="pt-4 border-t border-slate-100">
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-4">Footer Image</label>
+                      {footerImage ? (
+                        <div className="relative inline-block w-full max-w-2xl bg-slate-100 border border-slate-200 rounded-[20px] overflow-hidden group">
+                          <img src={footerImage} alt="Footer Preview" className="w-full h-auto block" />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <button
+                              type="button"
+                              disabled={isSalesManager}
+                              onClick={() => setFooterImage('')}
+                              className="bg-white text-red-600 px-4 py-2 font-bold text-sm rounded-lg shadow-sm"
+                            >
+                              Remove Footer
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="relative border-2 border-dashed border-slate-300 rounded-[20px] p-8 text-center hover:border-blue-500 hover:bg-blue-50 transition-colors">
+                          <input 
+                            type="file" 
+                            accept="image/png, image/jpeg, image/webp"
+                            disabled={isSalesManager}
+                            onChange={(e) => handleImageUpload(e, setFooterImage)}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                          />
+                          <ImageIcon className="w-8 h-8 text-slate-400 mx-auto mb-3" />
+                          <p className="text-sm font-semibold text-slate-700">Click or drag image to upload footer</p>
+                          <p className="text-xs text-slate-500 mt-1">Recommended width: up to 1200px</p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

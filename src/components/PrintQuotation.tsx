@@ -122,45 +122,51 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
           <div
             key={pageIndex}
             id={`quotation-page-${pageIndex}`}
-            className="block-page bg-white text-black p-[15mm] w-[210mm] h-[297mm] min-h-[297mm] max-h-[297mm] flex flex-col justify-between shadow-lg relative print:shadow-none print:border-none print:m-0 print:p-[15mm]"
+            className="block-page bg-white text-black px-[5mm] py-0 w-[210mm] h-[297mm] min-h-[297mm] max-h-[297mm] flex flex-col justify-between shadow-lg relative print:shadow-none print:border-none print:m-0 print:px-[5mm] print:py-0"
             style={{ boxSizing: 'border-box' }}
           >
             {/* Top Content Area */}
             <div className="flex flex-col flex-1 overflow-hidden">
               
-              {/* First Page Premium Header */}
-              {isFirst ? (
-                <div className="mb-4">
-                  <div className="flex justify-between items-center bg-blue-50 rounded-lg border-2 border-blue-800 p-3 mb-2">
-                    <div className="flex-1">
-                      <h1 className="text-2xl font-serif font-bold text-blue-800 leading-tight">Al Zahra Al Malakia</h1>
-                      <h2 className="text-lg font-serif font-semibold text-blue-800">Building Materials Trading L.L.C</h2>
-                    </div>
-                    <div className="px-4">
-                      <div className="w-16 h-16 border-[3px] border-blue-800 rotate-45 flex items-center justify-center bg-white rounded-sm">
-                        <span className="text-blue-800 font-bold -rotate-45 text-2xl font-serif">AZ</span>
+              {/* Header */}
+              <div className="mb-4">
+                {appSettings?.headerImage ? (
+                  <img src={appSettings.headerImage} alt="Quotation Header" className="w-full h-auto mb-2 object-contain object-top" />
+                ) : isFirst ? (
+                  <>
+                    <div className="flex justify-between items-center bg-blue-50 rounded-lg border-2 border-blue-800 p-3 mb-2">
+                      <div className="flex-1">
+                        <h1 className="text-xl font-serif font-bold text-blue-800 leading-tight whitespace-pre-line">
+                          {appSettings?.companyNameEn || 'Al Zahra Al Malakia\nBuilding Materials Trading L.L.C'}
+                        </h1>
+                      </div>
+                      <div className="px-4 shrink-0">
+                        <div className="w-16 h-16 border-[3px] border-blue-800 rotate-45 flex items-center justify-center bg-white rounded-sm">
+                          <span className="text-blue-800 font-bold -rotate-45 text-2xl font-serif">AZ</span>
+                        </div>
+                      </div>
+                      <div className="flex-1 text-right font-arabic">
+                        <h1 className="text-xl font-bold text-blue-800 leading-tight whitespace-pre-line">
+                          {appSettings?.companyNameAr || 'الزهــرة المـلـكـيـة\nلتـــجــارة مــواد الـبــنــاء ذ.م.م'}
+                        </h1>
                       </div>
                     </div>
-                    <div className="flex-1 text-right font-arabic">
-                      <h1 className="text-3xl font-bold text-blue-800 leading-tight">الزهــرة المـلـكـيـة</h1>
-                      <h2 className="text-xl font-bold text-blue-800 mt-1">لتـــجــارة مــواد الـبــنــاء ذ.م.م</h2>
+                    <div className="text-center text-blue-800 text-[11px] font-medium">
+                      Tel: {appSettings?.phone || '+971 4 28 444 52'} | Add.: {appSettings?.address || 'Shop No. 12, Building Materials Mall, Dubai, U.A.E'} | Email: office@alzahrabm.com
                     </div>
+                  </>
+                ) : (
+                  /* Subsequent Pages Running Header */
+                  <div className="flex justify-between items-center border-b border-gray-300 pb-2 mb-4 text-[10px] text-gray-500 font-medium">
+                    <span className="font-bold text-blue-800 uppercase tracking-wider">AL ZAHRA AL MALAKIA - Quotation</span>
+                    <span>Quotation No: <span className="font-bold">{safeQuoteNo}</span></span>
                   </div>
-                  <div className="text-center text-blue-800 text-[11px] font-medium">
-                    Tel: +971 4 28 444 52 | Add.: Shop No. 12, Building Materials Mall, Dubai, U.A.E | Email: office@alzahrabm.com
-                  </div>
-                </div>
-              ) : (
-                /* Subsequent Pages Running Header */
-                <div className="flex justify-between items-center border-b border-gray-300 pb-2 mb-4 text-[10px] text-gray-500 font-medium">
-                  <span className="font-bold text-blue-800 uppercase tracking-wider">AL ZAHRA AL MALAKIA - Quotation</span>
-                  <span>Quotation No: <span className="font-bold">{safeQuoteNo}</span></span>
-                </div>
-              )}
+                )}
+              </div>
 
               {/* First Page Meta Tables */}
               {isFirst && (
-                <div className="flex gap-4 mb-4 items-stretch">
+                <div className="flex gap-4 mb-6 items-stretch">
                   {/* Customer Info */}
                   <div className="flex-1 flex flex-col">
                     <table className="w-full h-full border-collapse border border-gray-300 text-[11px]">
@@ -225,7 +231,7 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
                         </tr>
                         <tr>
                           <td className="font-bold bg-slate-100">TRN:</td>
-                          <td>1002 5994 2900 003</td>
+                          <td>{appSettings?.trn || '1002 5994 2900 003'}</td>
                         </tr>
                         <tr>
                           <td className="font-bold bg-slate-100 rounded-bl-lg">Salesperson:</td>
@@ -242,12 +248,12 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
                 <thead>
                   <tr className="bg-slate-100 border-b border-gray-300 [&>th]:p-1.5 [&>th]:border-x [&>th]:border-gray-300 [&>th]:font-semibold text-[11px]">
                     <th className="w-[6%]">Sr. No.</th>
-                    <th className="text-left w-[44%]">Item Description</th>
-                    <th className="w-[14%]">Picture</th>
+                    <th className="text-left w-[36%]">Item Description</th>
+                    <th className="w-[12%]">Picture</th>
                     <th className="w-[8%]">Qty</th>
                     <th className="w-[8%]">Unit</th>
-                    <th className="text-right w-[10%]">Unit Price</th>
-                    <th className="text-right w-[10%]">Total Amount</th>
+                    <th className="text-right w-[15%]">Unit Price</th>
+                    <th className="text-right w-[15%]">Total Amount</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-300 [&>tr>td]:p-1.5 [&>tr>td]:border-x [&>tr>td]:border-gray-300">
@@ -354,11 +360,20 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
                     <div className="w-[58%]">
                       <h4 className="font-bold text-[10px] text-gray-950 mb-1">Terms & Conditions:</h4>
                       <ol className="list-decimal list-inside text-[9px] text-gray-800 space-y-0.5 leading-tight">
-                        <li>The above prices are in Dirhams (AED) quoted based on the quantities requested.</li>
-                        <li>Payment Terms 100% advance against order confirmation.</li>
-                        <li>Delivery time to be confirmed upon order confirmation.</li>
-                        <li>Local delivery charges are not included within this quotation.</li>
-                        <li>Customized items eg. counter tops/vanity cannot be cancelled or exchanged after confirmation.</li>
+                        {appSettings?.defaultTerms 
+                          ? appSettings.defaultTerms.split('\n').filter((t: string) => t.trim() !== '').map((term: string, idx: number) => (
+                              <li key={idx}>{term}</li>
+                            ))
+                          : (
+                            <>
+                              <li>The above prices are in Dirhams (AED) quoted based on the quantities requested.</li>
+                              <li>Payment Terms 100% advance against order confirmation.</li>
+                              <li>Delivery time to be confirmed upon order confirmation.</li>
+                              <li>Local delivery charges are not included within this quotation.</li>
+                              <li>Customized items eg. counter tops/vanity cannot be cancelled or exchanged after confirmation.</li>
+                            </>
+                          )
+                        }
                       </ol>
                       <div className="mt-4 border-t border-black w-40 pt-1 font-semibold text-center text-[10px]">
                         Customer's Signature
@@ -381,8 +396,16 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
                       </div>
                     </div>
                   </div>
+                </div>
+              )}
 
-                  {/* Top Quality Brands footer */}
+              {/* Footer Content on All Pages */}
+              <div className="mt-auto">
+                {appSettings?.footerImage ? (
+                  <div className="pt-2 mt-2">
+                     <img src={appSettings.footerImage} alt="Quotation Footer" className="w-full h-auto object-contain object-bottom" />
+                  </div>
+                ) : (
                   <div className="pt-1.5 mt-2 border-t border-blue-800 flex justify-between text-[9px] font-bold text-slate-800/80 uppercase tracking-wider">
                     <div>VADO</div>
                     <div>Jaquar</div>
@@ -392,8 +415,8 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
                     <div>KLUDI RAK</div>
                     <div>SONET</div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
 
               {/* Absolute Page Numbering */}
               <div className="flex justify-between items-center text-[9px] text-gray-400 font-medium pt-1 mt-1 border-t border-gray-100">

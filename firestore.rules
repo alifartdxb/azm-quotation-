@@ -12,19 +12,27 @@ service cloud.firestore {
     }
     
     function isSuperAdmin() {
-      return isAuthenticated() && 
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'SUPER_ADMIN';
+      return isAuthenticated() && (
+        (request.auth.token.get('email', '') == 'alifartdxb@gmail.com') ||
+        (request.auth.token.get('email', '') == 'admin@azmgroup.com') ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'SUPER_ADMIN')
+      );
     }
     
     function isManager() {
-      return isAuthenticated() && 
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['SUPER_ADMIN', 'SALES_MANAGER']);
+      return isAuthenticated() && (
+        (request.auth.token.get('email', '') == 'alifartdxb@gmail.com') ||
+        (request.auth.token.get('email', '') == 'admin@azmgroup.com') ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'SUPER_ADMIN' || 
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'SALES_MANAGER'))
+      );
     }
 
     match /users/{userId} {
       allow read: if isAuthenticated();
+      // Allow user to write to their own doc initially, or superadmin
       allow write: if isSuperAdmin() || request.auth.uid == userId;
     }
     
@@ -42,6 +50,8 @@ service cloud.firestore {
     
     match /settings/{document=**} {
       allow read: if isAuthenticated();
+      // Temporary check just to be 100% sure the superadmin rule isn't tossing generic errors 
+      // if token.email is missing for some reason
       allow write: if isSuperAdmin();
     }
     
