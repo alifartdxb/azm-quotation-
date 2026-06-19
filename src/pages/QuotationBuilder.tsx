@@ -9,7 +9,6 @@ import { formatCurrency, parseDate, cleanFirestoreData } from '../lib/utils';
 import { format } from 'date-fns';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import html2canvas from 'html2canvas';
 import { getProducts, getQuotation, db, generateNextQuotationNumber, logActivity, getAppSettings } from '../lib/firebase';
 import { collection, addDoc, updateDoc, doc } from 'firebase/firestore';
 
@@ -535,7 +534,7 @@ function QuotationBuilder() {
       }
     } catch (err: any) {
       console.error('Failed to download PDF:', err);
-      let errorMsg = 'Failed to generate PDF. You can still use the "Print / PDF" option as a fallback.';
+      let errorMsg = 'Error: Failed to generate PDF.';
       if (err.message === 'PDF engine timeout') {
         errorMsg = 'Error: PDF engine timeout.';
       } else if (err.message?.includes('Canvas') || err.message?.includes('canvas')) {
@@ -543,7 +542,7 @@ function QuotationBuilder() {
       } else if (err.message === 'Unable to load images') {
         errorMsg = 'Error: Unable to load images.';
       } else if (err instanceof RangeError || err.message?.includes('memory') || err.message?.includes('allocation')) {
-        errorMsg = 'Error: Insufficient memory.';
+        errorMsg = 'Error: Insufficient memory limit exceeded.';
       } else if (err.message) {
         errorMsg = `Error: jsPDF exception (${err.message}).`;
       }
