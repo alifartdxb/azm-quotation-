@@ -43,47 +43,149 @@ function QuotationBuilder() {
   const printRef = useRef<HTMLDivElement>(null);
   const handlePrint = useReactToPrint({ contentRef: printRef });
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const [preloadedImages, setPreloadedImages] = useState<Record<string, string>>({});
+
+  const convertImgToBase64 = (url: string): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0);
+            const dataURL = canvas.toDataURL('image/png');
+            resolve(dataURL);
+          } else {
+            resolve('');
+          }
+        } catch (err) {
+          console.warn('Canvas conversion failed for image:', url, err);
+          resolve('');
+        }
+      };
+      img.onerror = () => {
+        resolve('');
+      };
+      if (url.startsWith('http')) {
+        img.src = url + (url.indexOf('?') > -1 ? '&' : '?') + 'no_cache=' + Math.random();
+      } else {
+        img.src = url;
+      }
+    });
+  };
 
   const handleDownloadPdf = async () => {
     if (!printRef.current) return;
+
+    // 1. Data Validation
+    if (!quote) {
+      alert("Error: Missing quotation data.");
+      return;
+    }
+    if (!quote.quoteNo) {
+      alert("Error: Quotation number is missing.");
+      return;
+    }
+    if (!quote.customer || !quote.customer.companyName || !quote.customer.customerName) {
+      alert("Error: Customer information is incomplete.");
+      return;
+    }
+    if (!quote.items || quote.items.length === 0) {
+      alert("Error: Quotation item list is empty.");
+      return;
+    }
+    const hasInvalidPrice = quote.items.some(item => typeof item.unitPrice !== 'number' || isNaN(item.unitPrice) || item.unitPrice < 0);
+    if (hasInvalidPrice) {
+      alert("Error: One or more items have invalid unit prices.");
+      return;
+    }
+    if (quote.grandTotal === undefined || isNaN(quote.grandTotal)) {
+      alert("Error: Totals are not fully calculated.");
+      return;
+    }
+
     setIsDownloadingPdf(true);
     
     try {
+      // 2. Pre-load Images (Timeout & CORS-friendly check)
+      const imagesToLoad = quote.items.filter(item => item.product?.image);
+      const preloaded: Record<string, string> = {};
+
+      const loadImagesPromise = Promise.all(
+        imagesToLoad.map(async (item) => {
+          if (item.product?.image && item.product?.sku) {
+            try {
+              const base64 = await convertImgToBase64(item.product.image);
+              if (base64) {
+                preloaded[item.product.sku] = base64;
+              }
+            } catch (imageErr) {
+              console.warn(`Failed to convert image for sku ${item.product.sku}:`, imageErr);
+            }
+          }
+        })
+      );
+
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Unable to load images')), 8000)
+      );
+
+      try {
+        await Promise.race([loadImagesPromise, timeoutPromise]);
+      } catch (raceErr) {
+        console.warn('Image preloading race status:', raceErr);
+      }
+
+      setPreloadedImages(preloaded);
+
+      // Brief delay to allow React to paint Base64 src to the DOM elements
+      await new Promise(resolve => setTimeout(resolve, 350));
+
       const element = printRef.current;
+      const pages = element.querySelectorAll('.block-page');
       
-      // html2canvas config for optimal PDF page layout and high crisp factor
-      const canvas = await html2canvas(element, {
-        scale: 2, // 2x device pixel ratio for super crisp text and borders
-        useCORS: true,
-        allowTaint: true,
-        logging: false,
-        backgroundColor: '#ffffff'
-      });
-      
-      const imgData = canvas.toDataURL('image/png', 1.0);
+      if (!pages || pages.length === 0) {
+        throw new Error('Canvas rendering error');
+      }
+
+      // 3. Setup A4 jsPDF instance
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
         format: 'a4'
       });
-      
-      const imgWidth = 210; // A4 width in mm
-      const pageHeight = 297; // A4 height in mm
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let heightLeft = imgHeight;
-      let position = 0;
-      
-      // Page 1
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
-      heightLeft -= pageHeight;
-      
-      // Additional multi-page spill-over pages
-      while (heightLeft > 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
-        heightLeft -= pageHeight;
-      }
+
+      const engineTimeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('PDF engine timeout')), 18000)
+      );
+
+      const generatePdfPages = async () => {
+        for (let i = 0; i < pages.length; i++) {
+          const pageEl = pages[i] as HTMLElement;
+          
+          const canvas = await html2canvas(pageEl, {
+            scale: 2, // 2x device pixel ratio for super crisp text and borders
+            useCORS: true,
+            allowTaint: true,
+            logging: false,
+            backgroundColor: '#ffffff'
+          });
+          
+          const imgData = canvas.toDataURL('image/png', 1.0);
+          
+          if (i > 0) {
+            pdf.addPage();
+          }
+          
+          pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
+        }
+      };
+
+      await Promise.race([generatePdfPages(), engineTimeoutPromise]);
       
       const sanitizeName = (name: string) => name.replace(/[/\\?%*:|"<>]/g, '-').trim();
       const company = quote.customer?.companyName || quote.customer?.customerName || 'Customer';
@@ -95,9 +197,19 @@ function QuotationBuilder() {
       if (id) {
         await logActivity('Downloaded PDF', 'Quotation', id, `Downloaded PDF copy for individual quote ${quoteNo}`);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to download PDF:', err);
-      alert('Failed to generate PDF. You can still use the "Print / PDF" option as a fallback.');
+      let errorMsg = 'Failed to generate PDF. You can still use the "Print / PDF" option as a fallback.';
+      if (err.message === 'PDF engine timeout') {
+        errorMsg = 'Error: PDF engine timeout.';
+      } else if (err.message?.includes('Canvas') || err.message?.includes('canvas')) {
+        errorMsg = 'Error: Canvas rendering error.';
+      } else if (err.message === 'Unable to load images') {
+        errorMsg = 'Error: Unable to load images.';
+      } else if (err instanceof RangeError || err.message?.includes('memory')) {
+        errorMsg = 'Error: Insufficient memory.';
+      }
+      alert(errorMsg);
     } finally {
       setIsDownloadingPdf(false);
     }
@@ -588,7 +700,7 @@ function QuotationBuilder() {
       {!isEditing && quote.customer && (
         <div className="bg-slate-100 p-8 rounded-xl overflow-auto flex justify-center border-2 border-dashed border-slate-300">
           <div className="shadow-2xl">
-            <PrintQuotation ref={printRef} quotation={quote as Quotation} />
+            <PrintQuotation ref={printRef} quotation={quote as Quotation} preloadedImages={preloadedImages} />
           </div>
         </div>
       )}

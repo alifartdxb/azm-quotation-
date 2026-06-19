@@ -39,6 +39,14 @@
     page-break-inside: avoid;
     break-inside: avoid;
   }
+
+  .block-page {
+    page-break-after: always;
+    break-after: page;
+    box-shadow: none !important;
+    border: none !important;
+    margin: 0 !important;
+  }
   
   /* Hide UI elements during print */
   .no-print, nav, .sidebar {
