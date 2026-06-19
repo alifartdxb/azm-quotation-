@@ -8,6 +8,29 @@ interface Props {
 }
 
 export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotation }, ref) => {
+  const safeCustomer = quotation?.customer || {
+    customerName: '',
+    companyName: '',
+    contactPerson: '',
+    mobile: '',
+    email: '',
+    trn: '',
+    projectName: '',
+    siteLocation: '',
+    address: '',
+    reference: ''
+  };
+
+  const safeItems = quotation?.items || [];
+  const safeSubTotal = quotation?.subTotal || 0;
+  const safeDiscountTotal = quotation?.discountTotal || 0;
+  const safeVatAmount = quotation?.vatAmount || 0;
+  const safeGrandTotal = quotation?.grandTotal || 0;
+  const safeQuoteNo = quotation?.quoteNo || 'Draft';
+  const safeSalesperson = quotation?.salesperson || 'Ahmed Abdullah';
+  const safeValidityDays = quotation?.validityDays || 10;
+  const safeSubject = quotation?.subject || '';
+
   return (
     <div ref={ref} className="bg-white text-black p-8 max-w-[210mm] mx-auto min-h-[297mm] text-[12px] font-sans">
       
@@ -48,43 +71,43 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
             <tbody className="divide-y divide-gray-300 [&>tr>td]:p-1.5 [&>tr>td]:border-x [&>tr>td]:border-gray-300">
               <tr>
                 <td className="w-1/3 font-bold bg-slate-100">Company Name:</td>
-                <td>{quotation.customer?.companyName}</td>
+                <td>{safeCustomer.companyName}</td>
               </tr>
               <tr>
                 <td className="font-bold bg-slate-100">Customer Name:</td>
-                <td>{quotation.customer?.customerName}</td>
+                <td>{safeCustomer.customerName}</td>
               </tr>
               <tr>
                 <td className="font-bold bg-slate-100">Contact Person:</td>
-                <td>{quotation.customer?.contactPerson}</td>
+                <td>{safeCustomer.contactPerson}</td>
               </tr>
               <tr>
                 <td className="font-bold bg-slate-100">Contact No.:</td>
-                <td>{quotation.customer?.mobile}</td>
+                <td>{safeCustomer.mobile}</td>
               </tr>
               <tr>
                 <td className="font-bold bg-slate-100">Email:</td>
-                <td>{quotation.customer?.email}</td>
+                <td>{safeCustomer.email}</td>
               </tr>
               <tr>
                 <td className="font-bold bg-slate-100">Project Name:</td>
-                <td>{quotation.customer?.projectName}</td>
+                <td>{safeCustomer.projectName}</td>
               </tr>
               <tr>
                 <td className="font-bold bg-slate-100">Site Location:</td>
-                <td>{quotation.customer?.siteLocation}</td>
+                <td>{safeCustomer.siteLocation}</td>
               </tr>
               <tr>
                 <td className="font-bold bg-slate-100">Address:</td>
-                <td>{quotation.customer?.address}</td>
+                <td>{safeCustomer.address}</td>
               </tr>
               <tr>
                 <td className="font-bold bg-slate-100">Subject:</td>
-                <td>{quotation.subject}</td>
+                <td>{safeSubject}</td>
               </tr>
               <tr>
                 <td className="font-bold bg-slate-100 rounded-bl-lg">Customer TRN:</td>
-                <td className="rounded-br-lg">{quotation.customer?.trn}</td>
+                <td className="rounded-br-lg">{safeCustomer.trn}</td>
               </tr>
             </tbody>
           </table>
@@ -103,15 +126,15 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
             <tbody className="divide-y divide-gray-300 [&>tr>td]:p-1.5 [&>tr>td]:border-x [&>tr>td]:border-gray-300">
               <tr>
                 <td className="w-1/3 font-bold bg-slate-100">No.:</td>
-                <td className="font-bold">{quotation.quoteNo}</td>
+                <td className="font-bold">{safeQuoteNo}</td>
               </tr>
               <tr>
                 <td className="font-bold bg-slate-100">Date:</td>
-                <td>{format(parseDate(quotation.createdAt), 'dd MMM yyyy')}</td>
+                <td>{format(parseDate(quotation?.createdAt), 'dd MMM yyyy')}</td>
               </tr>
               <tr>
                 <td className="font-bold bg-slate-100">Validity:</td>
-                <td>{quotation.validityDays} Days</td>
+                <td>{safeValidityDays} Days</td>
               </tr>
               <tr>
                 <td className="font-bold bg-slate-100">TRN:</td>
@@ -119,11 +142,11 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
               </tr>
               <tr>
                 <td className="font-bold bg-slate-100">Reference:</td>
-                <td>{quotation.customer?.reference}</td>
+                <td>{safeCustomer.reference}</td>
               </tr>
               <tr>
                 <td className="font-bold bg-slate-100 rounded-bl-lg">Salesperson:</td>
-                <td className="rounded-br-lg">{quotation.salesperson}</td>
+                <td className="rounded-br-lg">{safeSalesperson}</td>
               </tr>
             </tbody>
           </table>
@@ -145,22 +168,22 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-300 [&>tr>td]:p-2 [&>tr>td]:border-x [&>tr>td]:border-gray-300">
-          {quotation.items.map((item, index) => (
+          {safeItems.map((item, index) => (
             <tr key={item.id} className="page-break-inside-avoid">
               <td>{index + 1}</td>
               <td className="text-left">
-                <div className="font-bold text-gray-800">{item.product.sku}</div>
-                <div className="text-gray-600">{item.product.name}</div>
+                <div className="font-bold text-gray-800">{item.product?.sku || ''}</div>
+                <div className="text-gray-600">{item.product?.name || ''}</div>
               </td>
               <td className="p-1">
-                {item.product.image ? (
+                {item.product?.image ? (
                   <img src={item.product.image} alt={item.product.sku} className="w-16 h-16 object-contain m-auto" />
                 ) : (
                   <div className="w-16 h-16 bg-gray-100 m-auto text-gray-400 text-xs flex items-center justify-center">No Img</div>
                 )}
               </td>
               <td>{item.qty}</td>
-              <td>{item.product.unit}</td>
+              <td>{item.product?.unit || 'Pcs'}</td>
               <td className="text-right">{formatCurrency(item.unitPrice)}</td>
               <td className="text-right">{item.discountAmt > 0 ? formatCurrency(item.discountAmt) : '-'}</td>
               <td className="text-right font-medium">{formatCurrency(item.total)}</td>
@@ -188,21 +211,21 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
              <tbody className="divide-y divide-gray-300 [&>tr>td]:p-2 [&>tr>td]:border-x [&>tr>td]:border-gray-300">
                 <tr>
                   <td className="font-bold w-1/2">Sub Total</td>
-                  <td className="font-bold">{formatCurrency(quotation.subTotal)}</td>
+                  <td className="font-bold">{formatCurrency(safeSubTotal)}</td>
                 </tr>
-                {quotation.discountTotal > 0 && (
+                {safeDiscountTotal > 0 && (
                   <tr>
                     <td className="font-bold text-red-600">Discount</td>
-                    <td className="font-bold text-red-600">-{formatCurrency(quotation.discountTotal)}</td>
+                    <td className="font-bold text-red-600">-{formatCurrency(safeDiscountTotal)}</td>
                   </tr>
                 )}
                 <tr>
                   <td className="font-bold bg-slate-100">VAT 5%</td>
-                  <td className="bg-slate-100">{formatCurrency(quotation.vatAmount)}</td>
+                  <td className="bg-slate-100">{formatCurrency(safeVatAmount)}</td>
                 </tr>
                 <tr>
                   <td className="font-bold bg-blue-800 text-white">Grand Total</td>
-                  <td className="font-bold bg-slate-100">{formatCurrency(quotation.grandTotal)}</td>
+                  <td className="font-bold bg-slate-100">{formatCurrency(safeGrandTotal)}</td>
                 </tr>
              </tbody>
            </table>

@@ -98,34 +98,31 @@ export const generateNextQuotationNumber = async (): Promise<string> => {
   
   await runTransaction(db, async (transaction) => {
     const snap = await transaction.get(counterRef);
-    let currentNumber = 735;
+    let currentNumber = 1;
     let prefix = 'QTN';
-    let year = new Date().getFullYear();
-    if (isNaN(year) || !year) {
-      year = 2026;
-    }
+    let year = 2026;
     
     if (!snap.exists()) {
       const initialData = {
-        currentNumber: 735,
+        currentNumber: 1,
         prefix: 'QTN',
-        year: year
+        year: 2026
       };
       transaction.set(counterRef, initialData);
-      currentNumber = 735;
+      currentNumber = 1;
       prefix = 'QTN';
+      year = 2026;
     } else {
       const data = snap.data();
-      currentNumber = (data.currentNumber || 735) + 1;
+      currentNumber = (data.currentNumber || 0) + 1;
       prefix = data.prefix || 'QTN';
-      year = data.year || year;
+      year = data.year || 2026;
+      transaction.update(counterRef, {
+        currentNumber: currentNumber
+      });
     }
     
     newQuoteNo = `${prefix}-${year}-${String(currentNumber).padStart(6, '0')}`;
-    
-    transaction.update(counterRef, {
-      currentNumber: currentNumber
-    });
   });
   
   if (user && newQuoteNo) {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import type { Quotation, Customer, Product, QuoteItem } from '../types';
 import { useReactToPrint } from 'react-to-print';
@@ -8,10 +8,10 @@ import { v4 as uuidv4 } from 'uuid';
 import { formatCurrency, parseDate, cleanFirestoreData } from '../lib/utils';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import { getProducts, getQuotation, db, generateNextQuotationNumber, logActivity } from '../lib/firebase';
+import { getProducts, getQuotation, db, generateNextQuotationNumber, logActivity, getAppSettings } from '../lib/firebase';
 import { collection, addDoc, updateDoc, doc } from 'firebase/firestore';
 
-export default function QuotationBuilder() {
+function QuotationBuilder() {
   const { id } = useParams();
   const navigate = useNavigate();
   
@@ -103,18 +103,104 @@ export default function QuotationBuilder() {
     }
   };
 
-  useEffect(() => {
-    getProducts().then(prodData => {
-      setProducts(prodData);
-    });
+  const [loadingPhase, setLoadingPhase] = useState<'idle' | 'settings' | 'quoteNo' | 'products' | 'quotation' | 'done'>('settings');
 
-    if (id) {
-       getQuotation(id).then(q => {
-         if (q) {
-           setQuote(q);
-         }
-       });
-    }
+  useEffect(() => {
+    const loadAllWorkspaceData = async () => {
+      try {
+        setLoadingPhase('settings');
+        // Step 1: Load settings
+        const settings = await getAppSettings();
+        
+        let nextQuoteNo = '';
+        if (!id) {
+          // New Quote
+          setLoadingPhase('quoteNo');
+          // Step 2: Generate quotation number
+          nextQuoteNo = await generateNextQuotationNumber();
+        }
+
+        setLoadingPhase('products');
+        // Step 3: Load products catalogue
+        const prodData = await getProducts();
+        setProducts(prodData || []);
+
+        if (id) {
+          setLoadingPhase('quotation');
+          const q = await getQuotation(id);
+          if (q) {
+            setQuote({
+              customer: q.customer || {
+                customerName: '',
+                companyName: '',
+                contactPerson: '',
+                mobile: '',
+                email: '',
+                trn: '',
+                projectName: '',
+                siteLocation: '',
+                address: '',
+                reference: ''
+              },
+              validityDays: q.validityDays || 10,
+              subject: q.subject || '',
+              items: q.items || [],
+              status: q.status || 'Draft',
+              salesperson: q.salesperson || 'Ahmed Abdullah',
+              quoteNo: q.quoteNo || '',
+              subTotal: q.subTotal || 0,
+              discountTotal: q.discountTotal || 0,
+              vatAmount: q.vatAmount || 0,
+              grandTotal: q.grandTotal || 0,
+              createdAt: q.createdAt
+            });
+          } else {
+            throw new Error("Unable to locate quotation with specified identifier");
+          }
+        } else {
+          // Initialize quotation state with first row automatically added as per Step 6
+          setQuote({
+            customer: {
+              customerName: '',
+              companyName: '',
+              contactPerson: '',
+              mobile: '',
+              email: '',
+              trn: '',
+              projectName: '',
+              siteLocation: '',
+              address: '',
+              reference: ''
+            },
+            validityDays: 10,
+            subject: '',
+            items: [{
+              id: uuidv4(),
+              productId: '',
+              product: {} as Product,
+              qty: 1,
+              unitPrice: 0,
+              discountAmt: 0,
+              total: 0
+            }],
+            subTotal: 0,
+            discountTotal: 0,
+            vatAmount: 0,
+            grandTotal: 0,
+            status: 'Draft',
+            salesperson: 'Ahmed Abdullah',
+            quoteNo: nextQuoteNo,
+          });
+        }
+        setLoadingPhase('done');
+      } catch (err) {
+        console.error("QuotationBuilder workspace initiation error:", err);
+        // Let the upper application scope handle the rendering fail state cleanly via boundary
+        throw err;
+      }
+    };
+
+    loadAllWorkspaceData();
   }, [id]);
 
   const addItem = () => {
@@ -206,7 +292,58 @@ export default function QuotationBuilder() {
     }
   };
 
-  if (!quote) return <div>Loading...</div>;
+  if (loadingPhase !== 'done') {
+    return (
+      <div className="min-h-[400px] flex flex-col items-center justify-center p-8 bg-white rounded-2xl border border-slate-200 shadow-sm max-w-md mx-auto my-12">
+        <div className="w-12 h-12 rounded-full border-4 border-slate-200 border-t-blue-600 animate-spin mb-6"></div>
+        <h2 className="text-lg font-bold text-slate-900 mb-4 tracking-tight text-center">Preparing Quotation Workspace</h2>
+        <div className="space-y-3 w-full max-w-xs">
+          <div className="flex items-center gap-3 text-sm">
+            <span className={loadingPhase === 'settings' ? 'text-blue-600 animate-pulse font-medium' : 'text-slate-400'}>
+              {loadingPhase === 'settings' ? '● Loading settings...' : '✓ Settings loaded'}
+            </span>
+          </div>
+          {!id && (
+            <div className="flex items-center gap-3 text-sm">
+              <span className={
+                loadingPhase === 'quoteNo' 
+                  ? 'text-blue-600 animate-pulse font-medium' 
+                  : (loadingPhase === 'settings' ? 'text-slate-300' : '✓ Quotation sequence generated')
+              }>
+                {loadingPhase === 'settings' 
+                  ? '○ Pending quotation sequence...' 
+                  : (loadingPhase === 'quoteNo' ? '● Allocating sequence number...' : '✓ Quotation sequence generated')}
+              </span>
+            </div>
+          )}
+          <div className="flex items-center gap-3 text-sm">
+            <span className={
+              loadingPhase === 'products' 
+                ? 'text-blue-600 animate-pulse font-medium' 
+                : (['settings', 'quoteNo'].includes(loadingPhase) ? 'text-slate-300' : '✓ Product catalog loaded')
+            }>
+              {['settings', 'quoteNo'].includes(loadingPhase) 
+                ? '○ Pending product catalog...' 
+                : (loadingPhase === 'products' ? '● Loading product catalog...' : '✓ Product catalog loaded')}
+            </span>
+          </div>
+          {id && (
+            <div className="flex items-center gap-3 text-sm">
+              <span className={
+                (loadingPhase as string) === 'quotation' 
+                  ? 'text-blue-600 animate-pulse font-medium' 
+                  : ((loadingPhase as string) !== 'done' && (loadingPhase as string) !== 'quotation' ? 'text-slate-300' : '✓ Quotation document loaded')
+              }>
+                {(loadingPhase as string) !== 'quotation' && (loadingPhase as string) !== 'done'
+                  ? '○ Pending quotation document...' 
+                  : ((loadingPhase as string) === 'quotation' ? '● Loading quotation document...' : '✓ Quotation document loaded')}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 pb-20">
@@ -459,5 +596,43 @@ export default function QuotationBuilder() {
         </div>
       )}
     </div>
+  );
+}
+
+class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
+  state = { hasError: false };
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error: any, errorInfo: any) {
+    console.error("ErrorBoundary caught an error:", error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-[400px] flex flex-col items-center justify-center p-8 bg-white rounded-2xl border border-slate-200 shadow-sm max-w-lg mx-auto my-12 text-center">
+          <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center text-red-600 mb-4 font-bold text-xl">!</div>
+          <h2 className="text-lg font-bold text-slate-900 mb-2">Workspace Error</h2>
+          <p className="text-sm text-slate-600 font-medium leading-relaxed">
+            Unable to load quotation. Please refresh or contact administrator.
+          </p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="mt-6 bg-slate-900 hover:bg-slate-800 text-white px-5 py-2 rounded-lg text-sm font-semibold transition-all shadow-sm active:scale-95"
+          >
+            Refresh Page
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+export default function QuotationBuilderWithBoundary() {
+  return (
+    <ErrorBoundary>
+      <QuotationBuilder />
+    </ErrorBoundary>
   );
 }
