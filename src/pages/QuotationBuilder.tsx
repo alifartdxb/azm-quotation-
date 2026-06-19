@@ -6,7 +6,9 @@ import { PrintQuotation } from '../components/PrintQuotation';
 import { Save, Printer, Plus, Trash2, ArrowLeft, Edit, Download } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { formatCurrency, parseDate, cleanFirestoreData } from '../lib/utils';
+import { format } from 'date-fns';
 import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import html2canvas from 'html2canvas';
 import { getProducts, getQuotation, db, generateNextQuotationNumber, logActivity, getAppSettings } from '../lib/firebase';
 import { collection, addDoc, updateDoc, doc } from 'firebase/firestore';
@@ -79,8 +81,6 @@ function QuotationBuilder() {
   };
 
   const handleDownloadPdf = async () => {
-    if (!printRef.current) return;
-
     // 1. Data Validation
     if (!quote) {
       alert("Error: Missing quotation data.");
@@ -130,63 +130,375 @@ function QuotationBuilder() {
         })
       );
 
+      // Give images up to 6 seconds to pre-load, but don't fail the whole PDF if some fail or timeout
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Unable to load images')), 8000)
+        setTimeout(() => reject(new Error('Unable to load images')), 6000)
       );
 
       try {
         await Promise.race([loadImagesPromise, timeoutPromise]);
       } catch (raceErr) {
-        console.warn('Image preloading race status:', raceErr);
+        console.warn('Image preloading race status or timeout:', raceErr);
       }
 
       setPreloadedImages(preloaded);
 
-      // Brief delay to allow React to paint Base64 src to the DOM elements
-      await new Promise(resolve => setTimeout(resolve, 350));
-
-      const element = printRef.current;
-      const pages = element.querySelectorAll('.block-page');
-      
-      if (!pages || pages.length === 0) {
-        throw new Error('Canvas rendering error');
-      }
-
-      // 3. Setup A4 jsPDF instance
+      // 3. Setup A4 jsPDF instance & autoTable
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
         format: 'a4'
       });
 
-      const engineTimeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('PDF engine timeout')), 18000)
-      );
-
-      const generatePdfPages = async () => {
-        for (let i = 0; i < pages.length; i++) {
-          const pageEl = pages[i] as HTMLElement;
-          
-          const canvas = await html2canvas(pageEl, {
-            scale: 2, // 2x device pixel ratio for super crisp text and borders
-            useCORS: true,
-            allowTaint: true,
-            logging: false,
-            backgroundColor: '#ffffff'
-          });
-          
-          const imgData = canvas.toDataURL('image/png', 1.0);
-          
-          if (i > 0) {
-            pdf.addPage();
-          }
-          
-          pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
-        }
+      const safeCustomer = quote.customer || {
+        customerName: '',
+        companyName: '',
+        contactPerson: '',
+        mobile: '',
+        email: '',
+        trn: '',
+        projectName: '',
+        siteLocation: '',
+        address: '',
+        reference: ''
       };
 
-      await Promise.race([generatePdfPages(), engineTimeoutPromise]);
+      const safeItems = quote.items || [];
+      const safeSubTotal = quote.subTotal || 0;
+      const safeVatAmount = quote.vatAmount || 0;
+      const safeGrandTotal = quote.grandTotal || 0;
+      const safeQuoteNo = quote.quoteNo || 'Draft';
+      const safeSalesperson = quote.salesperson || 'Ahmed Abdullah';
+      const safeValidityDays = quote.validityDays || 10;
+      const safeSubject = quote.subject || '';
+
+      const totalPagesExp = '{total_pages_count_string}';
+
+      // First Page Premium Header
+      pdf.setFillColor(30, 41, 59); // slate-800
+      pdf.rect(15, 15, 180, 24, 'F');
+
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(16);
+      pdf.text("AL ZAHRA AL MALAKIA", 22, 23);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(10);
+      pdf.text("Building Materials Trading L.L.C", 22, 28);
+
+      // Draw stylized premium AZ logo banner on right
+      pdf.setFillColor(255, 255, 255);
+      pdf.rect(160, 19, 16, 16, 'F');
+      pdf.setDrawColor(255, 255, 255);
+      pdf.setLineWidth(1);
+      pdf.rect(160, 19, 16, 16, 'D');
+
+      pdf.setTextColor(30, 41, 59);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(11);
+      pdf.text("AZ", 168, 29, { align: 'center' });
+
+      // Slogan below top bar
+      pdf.setTextColor(100, 116, 139);
+      pdf.setFontSize(7.5);
+      pdf.setFont('helvetica', 'medium');
+      const subheaderText = "Tel: +971 4 28 444 52 | Add.: Shop No. 12, Building Materials Mall, Dubai, U.A.E | Email: office@alzahrabm.com";
+      pdf.text(subheaderText, 105, 43, { align: 'center' });
+
+      // Left-side Customer Info Table
+      autoTable(pdf, {
+        startY: 48,
+        margin: { left: 15 },
+        tableWidth: 92,
+        theme: 'grid',
+        styles: { fontSize: 8, cellPadding: 2, font: 'helvetica' },
+        headStyles: { fillColor: [30, 141, 152], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
+        bodyStyles: { minCellHeight: 6 },
+        columnStyles: {
+          0: { cellWidth: 28, fontStyle: 'bold', fillColor: [248, 250, 252] },
+          1: { cellWidth: 'auto' }
+        },
+        head: [[{ content: 'Customer Info', colSpan: 2 }]],
+        body: [
+          ['Company Name', safeCustomer.companyName || '-'],
+          ['Customer Name', safeCustomer.customerName || '-'],
+          ['Contact No.', safeCustomer.mobile || '-'],
+          ['Email', safeCustomer.email || '-'],
+          ['Address', safeCustomer.address || '-'],
+          ['Subject', safeSubject || '-'],
+          ['Customer TRN', safeCustomer.trn || '-']
+        ]
+      });
+
+      // Right-side Quotation Table
+      autoTable(pdf, {
+        startY: 48,
+        margin: { left: 113 },
+        tableWidth: 82,
+        theme: 'grid',
+        styles: { fontSize: 8, cellPadding: 2, font: 'helvetica' },
+        headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
+        bodyStyles: { minCellHeight: 6 },
+        columnStyles: {
+          0: { cellWidth: 26, fontStyle: 'bold', fillColor: [248, 250, 252] },
+          1: { cellWidth: 'auto' }
+        },
+        head: [[{ content: 'Quotation', colSpan: 2 }]],
+        body: [
+          ['No.', safeQuoteNo],
+          ['Date', format(parseDate(quote.createdAt), 'dd MMM yyyy')],
+          ['Validity', `${safeValidityDays} Days`],
+          ['TRN', '1002 5994 2900 003'],
+          ['Reference', safeCustomer.reference || '-'],
+          ['Salesperson', safeSalesperson]
+        ]
+      });
+
+      // Rows for core items table
+      const tableRows = safeItems.map((item, index) => {
+        return [
+          index + 1,
+          `${item.product?.sku || ''}\n${item.product?.name || ''}`,
+          '', // Image cell drawn in didDrawCell
+          item.qty || 0,
+          item.product?.unit || 'Pcs',
+          formatCurrency(item.unitPrice || 0),
+          formatCurrency(item.total || 0)
+        ];
+      });
+
+      // Draw Main Items table
+      autoTable(pdf, {
+        startY: 106,
+        margin: { left: 15, right: 15, top: 25, bottom: 35 },
+        theme: 'grid',
+        styles: { valign: 'middle', fontSize: 8.5, cellPadding: 3, font: 'helvetica' },
+        headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', halign: 'center', lineWidth: 0.2, lineColor: [200, 200, 200] },
+        bodyStyles: { minCellHeight: 14 },
+        columnStyles: {
+          0: { cellWidth: 12, halign: 'center' },
+          1: { cellWidth: 'auto', halign: 'left' },
+          2: { cellWidth: 20, halign: 'center', minCellHeight: 14 },
+          3: { cellWidth: 12, halign: 'center' },
+          4: { cellWidth: 14, halign: 'center' },
+          5: { cellWidth: 24, halign: 'right' },
+          6: { cellWidth: 26, halign: 'right' }
+        },
+        head: [
+          ['Sr. No.', 'Item Description', 'Picture', 'Qty', 'Unit', 'Unit Price', 'Total Amount']
+        ],
+        body: tableRows,
+        didDrawCell: (data) => {
+          if (data.column.index === 2 && data.cell.section === 'body') {
+            const item = safeItems[data.row.index];
+            if (item && item.product?.sku) {
+              const imgData = preloaded[item.product.sku];
+              if (imgData) {
+                const imgSize = 10;
+                const xPos = data.cell.x + (data.cell.width - imgSize) / 2;
+                const yPos = data.cell.y + (data.cell.height - imgSize) / 2;
+                try {
+                  pdf.addImage(imgData, 'PNG', xPos, yPos, imgSize, imgSize);
+                } catch (err) {
+                  console.error("Error drawing cell image:", err);
+                }
+              } else {
+                pdf.setFontSize(7.5);
+                pdf.setFont('helvetica', 'normal');
+                pdf.setTextColor(150);
+                const xPos = data.cell.x + data.cell.width / 2;
+                const yPos = data.cell.y + data.cell.height / 2 + 2;
+                pdf.text("No Img", xPos, yPos, { align: 'center' });
+              }
+            }
+          }
+        },
+        didDrawPage: (data) => {
+          // Running header on pages > 1
+          if (data.pageNumber > 1) {
+            pdf.setFontSize(7.5);
+            pdf.setFont('helvetica', 'bold');
+            pdf.setTextColor(30, 41, 59);
+            pdf.text("AL ZAHRA AL MALAKIA - BUILDING MATERIALS TRADING L.L.C", 15, 12);
+            pdf.setFont('helvetica', 'normal');
+            pdf.setTextColor(100);
+            pdf.text(`Quotation No: ${safeQuoteNo}`, 195, 12, { align: 'right' });
+            pdf.setLineWidth(0.2);
+            pdf.setDrawColor(226, 232, 240);
+            pdf.line(15, 14, 195, 14);
+          }
+
+          // Dynamic running footer on all pages
+          pdf.setFontSize(7);
+          pdf.setFont('helvetica', 'normal');
+          pdf.setTextColor(148, 163, 184);
+          pdf.text(`Printed on ${format(new Date(), 'dd MMM yyyy HH:mm')}`, 15, 287);
+          pdf.text(`Page ${data.pageNumber} of ${totalPagesExp}`, 195, 287, { align: 'right' });
+        }
+      });
+
+      // Determine bottom position and page breaks for signature areas
+      let finalY = (pdf as any).lastAutoTable.finalY || 106;
+      const requiredFooterHeight = 85;
       
+      if (finalY + requiredFooterHeight > 275) {
+        pdf.addPage();
+        finalY = 20;
+      }
+
+      const footerStartY = finalY + 8;
+
+      // Draw Bank Details block on the left
+      pdf.setFillColor(248, 250, 252);
+      pdf.rect(15, footerStartY, 110, 26, 'F');
+      pdf.setDrawColor(226, 232, 240);
+      pdf.setLineWidth(0.25);
+      pdf.rect(15, footerStartY, 110, 26, 'D');
+
+      pdf.setTextColor(15, 23, 42);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(8.5);
+      pdf.text("Bank Details:", 19, footerStartY + 5);
+
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(7.5);
+      pdf.setTextColor(51, 65, 85);
+      pdf.text("Bank Name:", 19, footerStartY + 10);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text("Dubai Islamic Bank", 42, footerStartY + 10);
+
+      pdf.setFont('helvetica', 'normal');
+      pdf.text("Account Name:", 19, footerStartY + 14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text("AZM Group LLC", 42, footerStartY + 14);
+
+      pdf.setFont('helvetica', 'normal');
+      pdf.text("Account Number:", 19, footerStartY + 18);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text("0000000000000000", 42, footerStartY + 18);
+
+      pdf.setFont('helvetica', 'normal');
+      pdf.text("IBAN Number:", 19, footerStartY + 22);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text("AE0000000000000000", 42, footerStartY + 22);
+
+      // Draw Totals side-table on the right
+      autoTable(pdf, {
+        startY: footerStartY,
+        margin: { left: 130 },
+        tableWidth: 65,
+        theme: 'grid',
+        styles: { fontSize: 8, cellPadding: 2, font: 'helvetica' },
+        columnStyles: {
+          0: { cellWidth: 28, halign: 'left', fontStyle: 'bold', fillColor: [248, 250, 252] },
+          1: { cellWidth: 37, halign: 'right', fontStyle: 'bold' }
+        },
+        body: [
+          ['Sub Total', formatCurrency(safeSubTotal)],
+          ['VAT 5%', formatCurrency(safeVatAmount)],
+          ['Grand Total', formatCurrency(safeGrandTotal)]
+        ],
+        didParseCell: (data) => {
+          if (data.row.index === 2) {
+            if (data.column.index === 0) {
+              data.cell.styles.fillColor = [30, 41, 59];
+              data.cell.styles.textColor = [255, 255, 255];
+            } else {
+              data.cell.styles.textColor = [30, 58, 138];
+              data.cell.styles.fontSize = 8.5;
+            }
+          }
+        }
+      });
+
+      // Terms & Conditions and Signature Area
+      const termsStartY = footerStartY + 30;
+
+      pdf.setFontSize(8.5);
+      pdf.setTextColor(15, 23, 42);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text("Terms & Conditions:", 15, termsStartY + 4);
+
+      pdf.setFontSize(7);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(51, 65, 85);
+
+      const terms = [
+        "1. The above prices are in Dirhams (AED) quoted based on the quantities requested.",
+        "2. Payment Terms 100% advance against order confirmation.",
+        "3. Delivery time to be confirmed upon order confirmation.",
+        "4. Local delivery charges are not included within this quotation.",
+        "5. Customized items eg. counter tops/vanity cannot be cancelled or exchanged after confirmation."
+      ];
+
+      let termY = termsStartY + 8;
+      terms.forEach(term => {
+        pdf.text(term, 15, termY);
+        termY += 3.5;
+      });
+
+      // Customer's signature line
+      pdf.setLineWidth(0.25);
+      pdf.setDrawColor(15, 23, 42);
+      pdf.line(15, termY + 8, 65, termY + 8);
+
+      pdf.setFontSize(7.5);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text("Customer's Signature", 15, termY + 12);
+
+      // Authorized signature & stamp on the right
+      pdf.setFontSize(7.5);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(51, 65, 85);
+      pdf.text("For ", 130, termsStartY + 4);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(15, 43, 114);
+      pdf.text("AL ZAHRA AL MALAKIA", 135, termsStartY + 4);
+
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(51, 65, 85);
+      pdf.text("Building Materials Trading LLC", 130, termsStartY + 8);
+
+      // Stamp representation
+      pdf.setDrawColor(15, 43, 114);
+      pdf.setLineWidth(0.2);
+      pdf.circle(162, termsStartY + 20, 8, 'S');
+      pdf.setFontSize(5);
+      pdf.setTextColor(15, 43, 114);
+      pdf.text("COMPANY STAMP", 162, termsStartY + 20.5, { align: 'center' });
+
+      // Authorized Signature line
+      pdf.setLineWidth(0.25);
+      pdf.setDrawColor(15, 23, 42);
+      pdf.line(130, termsStartY + 30, 195, termsStartY + 30);
+
+      pdf.setFontSize(7.5);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(15, 23, 42);
+      pdf.text("Authorised Signature", 130, termsStartY + 34);
+
+      // Top Quality Brands Bar
+      const brandsStartY = termsStartY + 44;
+      pdf.setLineWidth(0.25);
+      pdf.setDrawColor(30, 58, 138);
+      pdf.line(15, brandsStartY, 195, brandsStartY);
+
+      pdf.setFontSize(7.5);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(100, 116, 139);
+
+      const brands = ["VADO", "Jaquar", "ITALIAN STANDARDS", "NOURK", "SANIT", "KLUDI RAK", "SONET"];
+      const spacing = 180 / (brands.length - 1);
+      brands.forEach((brand, idx) => {
+        pdf.text(brand, 15 + idx * spacing, brandsStartY + 4, { align: idx === 0 ? 'left' : idx === brands.length - 1 ? 'right' : 'center' });
+      });
+
+      // 4. Multi-pass page counting replacement
+      if (typeof pdf.putTotalPages === 'function') {
+        pdf.putTotalPages(totalPagesExp);
+      }
+
+      // Save PDF output
       const sanitizeName = (name: string) => name.replace(/[/\\?%*:|"<>]/g, '-').trim();
       const company = quote.customer?.companyName || quote.customer?.customerName || 'Customer';
       const quoteNo = quote.quoteNo || 'Draft';
@@ -206,8 +518,10 @@ function QuotationBuilder() {
         errorMsg = 'Error: Canvas rendering error.';
       } else if (err.message === 'Unable to load images') {
         errorMsg = 'Error: Unable to load images.';
-      } else if (err instanceof RangeError || err.message?.includes('memory')) {
+      } else if (err instanceof RangeError || err.message?.includes('memory') || err.message?.includes('allocation')) {
         errorMsg = 'Error: Insufficient memory.';
+      } else if (err.message) {
+        errorMsg = `Error: jsPDF exception (${err.message}).`;
       }
       alert(errorMsg);
     } finally {
