@@ -45,6 +45,7 @@ function QuotationBuilder() {
   const handlePrint = useReactToPrint({ contentRef: printRef });
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [preloadedImages, setPreloadedImages] = useState<Record<string, string>>({});
+  const [appSettings, setAppSettings] = useState<any>(null);
 
   const convertImgToBase64 = (url: string): Promise<string> => {
     return new Promise((resolve) => {
@@ -271,7 +272,6 @@ function QuotationBuilder() {
         },
         head: [[{ content: 'Customer Info', colSpan: 2 }]],
         body: [
-          ['Company Name', safeCustomer.companyName || '-'],
           ['Customer Name', safeCustomer.customerName || '-'],
           ['Contact No.', safeCustomer.mobile || '-'],
           ['Email', safeCustomer.email || '-'],
@@ -300,7 +300,6 @@ function QuotationBuilder() {
           ['Date', format(parseDate(quote.createdAt), 'dd MMM yyyy')],
           ['Validity', `${safeValidityDays} Days`],
           ['TRN', '1002 5994 2900 003'],
-          ['Reference', safeCustomer.reference || '-'],
           ['Salesperson', safeSalesperson]
         ]
       });
@@ -404,22 +403,22 @@ function QuotationBuilder() {
       pdf.setTextColor(51, 65, 85);
       pdf.text("Bank Name:", 19, footerStartY + 10);
       pdf.setFont('helvetica', 'bold');
-      pdf.text("Dubai Islamic Bank", 42, footerStartY + 10);
+      pdf.text(appSettings?.bankName || "Dubai Islamic Bank", 42, footerStartY + 10);
 
       pdf.setFont('helvetica', 'normal');
       pdf.text("Account Name:", 19, footerStartY + 14);
       pdf.setFont('helvetica', 'bold');
-      pdf.text("AZM Group LLC", 42, footerStartY + 14);
+      pdf.text(appSettings?.accountName || "AZM Group LLC", 42, footerStartY + 14);
 
       pdf.setFont('helvetica', 'normal');
       pdf.text("Account Number:", 19, footerStartY + 18);
       pdf.setFont('helvetica', 'bold');
-      pdf.text("0000000000000000", 42, footerStartY + 18);
+      pdf.text(appSettings?.accountNumber || "0000000000000000", 42, footerStartY + 18);
 
       pdf.setFont('helvetica', 'normal');
       pdf.text("IBAN Number:", 19, footerStartY + 22);
       pdf.setFont('helvetica', 'bold');
-      pdf.text("AE0000000000000000", 42, footerStartY + 22);
+      pdf.text(appSettings?.iban || "AE0000000000000000", 42, footerStartY + 22);
 
       // Draw Totals side-table on the right
       autoTable(pdf, {
@@ -562,6 +561,7 @@ function QuotationBuilder() {
         let settings;
         try {
           settings = await getAppSettings();
+          setAppSettings(settings);
         } catch (err: any) {
           console.error("Step 1 (Load settings) failed:", err);
           throw new Error(`Step 1 (Load settings) failed: ${err.message || err}`);
@@ -1037,7 +1037,7 @@ function QuotationBuilder() {
       {!isEditing && quote.customer && (
         <div className="bg-slate-100 p-8 rounded-xl overflow-auto flex justify-center border-2 border-dashed border-slate-300">
           <div className="shadow-2xl">
-            <PrintQuotation ref={printRef} quotation={quote as Quotation} preloadedImages={preloadedImages} />
+            <PrintQuotation ref={printRef} quotation={quote as Quotation} preloadedImages={preloadedImages} appSettings={appSettings} />
           </div>
         </div>
       )}

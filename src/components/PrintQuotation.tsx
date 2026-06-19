@@ -6,6 +6,7 @@ import { format } from 'date-fns';
 interface Props {
   quotation: Quotation;
   preloadedImages?: Record<string, string>;
+  appSettings?: any;
 }
 
 interface PageData {
@@ -84,7 +85,7 @@ const partitionItems = (items: QuoteItem[]): PageData[] => {
   return pages;
 };
 
-export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotation, preloadedImages }, ref) => {
+export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotation, preloadedImages, appSettings }, ref) => {
   const safeCustomer = quotation?.customer || {
     customerName: '',
     companyName: '',
@@ -169,11 +170,7 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
                       </thead>
                       <tbody className="divide-y divide-gray-300 [&>tr>td]:p-1 [&>tr>td]:border-x [&>tr>td]:border-gray-300">
                         <tr>
-                          <td className="w-1/3 font-bold bg-slate-100">Company Name:</td>
-                          <td>{safeCustomer.companyName}</td>
-                        </tr>
-                        <tr>
-                          <td className="font-bold bg-slate-100">Customer Name:</td>
+                          <td className="w-1/3 font-bold bg-slate-100">Customer Name:</td>
                           <td>{safeCustomer.customerName}</td>
                         </tr>
                         <tr>
@@ -226,10 +223,6 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
                         <tr>
                           <td className="font-bold bg-slate-100">TRN:</td>
                           <td>1002 5994 2900 003</td>
-                        </tr>
-                        <tr>
-                          <td className="font-bold bg-slate-100">Reference:</td>
-                          <td>{safeCustomer.reference}</td>
                         </tr>
                         <tr>
                           <td className="font-bold bg-slate-100 rounded-bl-lg">Salesperson:</td>
@@ -308,10 +301,10 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
                     <div className="flex-1 text-[10px] leading-tight text-gray-800">
                       <h4 className="font-bold uppercase text-gray-900 mb-1 border-b border-gray-100 pb-0.5">Bank Details:</h4>
                       <div className="space-y-0.5">
-                        <p><span className="font-semibold">Bank Name:</span> Dubai Islamic Bank</p>
-                        <p><span className="font-semibold">AccountName:</span> AZM Group LLC</p>
-                        <p><span className="font-semibold">Account Number:</span> 0000000000000000</p>
-                        <p><span className="font-semibold">IBAN Number:</span> AE0000000000000000</p>
+                        <p><span className="font-semibold">Bank Name:</span> {appSettings?.bankName || 'Dubai Islamic Bank'}</p>
+                        <p><span className="font-semibold">AccountName:</span> {appSettings?.accountName || 'AZM Group LLC'}</p>
+                        <p><span className="font-semibold">Account Number:</span> {appSettings?.accountNumber || '0000000000000000'}</p>
+                        <p><span className="font-semibold">IBAN Number:</span> {appSettings?.iban || 'AE0000000000000000'}</p>
                       </div>
                     </div>
 
