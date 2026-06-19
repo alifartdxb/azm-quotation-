@@ -304,9 +304,12 @@ function QuotationBuilder() {
 
       // Rows for core items table
       const tableRows = safeItems.map((item, index) => {
+        const itemDesc = item.productId === 'MANUAL' 
+          ? (item.product?.name || 'Manual Item')
+          : `${item.product?.sku || ''}\n${item.product?.name || ''}`;
         return [
           index + 1,
-          `${item.product?.sku || ''}\n${item.product?.name || ''}`,
+          itemDesc,
           '', // Image cell drawn in didDrawCell
           item.qty || 0,
           item.product?.unit || 'Pcs',
@@ -341,8 +344,11 @@ function QuotationBuilder() {
         didDrawCell: (data) => {
           if (data.column.index === 2 && data.cell.section === 'body') {
             const item = safeItems[data.row.index];
-            if (item && item.product?.sku) {
-              const imgData = preloaded[item.product.sku];
+            if (item) {
+              const imgData = item.productId === 'MANUAL' 
+                ? item.product?.image 
+                : (item.product?.sku ? preloaded[item.product.sku] : null);
+              
               if (imgData) {
                 const imgSize = 10;
                 const xPos = data.cell.x + (data.cell.width - imgSize) / 2;
@@ -419,6 +425,19 @@ function QuotationBuilder() {
       pdf.text(appSettings?.iban || "AE0000000000000000", 42, footerStartY + 22);
 
       // Draw Totals side-table on the right
+      const totalsBody: string[][] = [
+        ['Sub Total', formatCurrency(safeSubTotal)]
+      ];
+      
+      const discountRate = quote.discountRate || 0;
+      if (discountRate > 0) {
+        totalsBody.push([`Discount (${discountRate}%)`, `-${formatCurrency(quote.discountTotal || 0)}`]);
+        totalsBody.push(['Net Total', formatCurrency(quote.netTotal || safeSubTotal)]);
+      }
+      
+      totalsBody.push(['VAT 5%', formatCurrency(safeVatAmount)]);
+      totalsBody.push(['Grand Total', formatCurrency(safeGrandTotal)]);
+
       autoTable(pdf, {
         startY: footerStartY,
         margin: { left: 130 },
@@ -429,13 +448,9 @@ function QuotationBuilder() {
           0: { cellWidth: 28, halign: 'left', fontStyle: 'bold', fillColor: [248, 250, 252] },
           1: { cellWidth: 37, halign: 'right', fontStyle: 'bold' }
         },
-        body: [
-          ['Sub Total', formatCurrency(safeSubTotal)],
-          ['VAT 5%', formatCurrency(safeVatAmount)],
-          ['Grand Total', formatCurrency(safeGrandTotal)]
-        ],
+        body: totalsBody,
         didParseCell: (data) => {
-          if (data.row.index === 2) {
+          if (data.row.index === totalsBody.length - 1) {
             if (data.column.index === 0) {
               data.cell.styles.fillColor = [30, 41, 59];
               data.cell.styles.textColor = [255, 255, 255];
@@ -443,6 +458,8 @@ function QuotationBuilder() {
               data.cell.styles.textColor = [30, 58, 138];
               data.cell.styles.fontSize = 8.5;
             }
+          } else if (discountRate > 0 && data.row.index === 1 && data.column.index === 1) {
+            data.cell.styles.textColor = [5, 150, 105]; // Emerald 600
           }
         }
       });
