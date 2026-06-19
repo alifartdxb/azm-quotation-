@@ -174,40 +174,92 @@ function QuotationBuilder() {
 
       const totalPagesExp = '{total_pages_count_string}';
 
-      // First Page Premium Header
-      pdf.setFillColor(30, 41, 59); // slate-800
-      pdf.rect(15, 15, 180, 24, 'F');
+      const drawHeaderAndFooter = (pageNum: number) => {
+        // --- HEADER ---
+        pdf.setFillColor(233, 243, 246);
+        pdf.rect(12, 10, 186, 18, 'F'); // Light Cyan Background
 
-      pdf.setTextColor(255, 255, 255);
-      pdf.setFont('helvetica', 'bold');
-      pdf.setFontSize(16);
-      pdf.text("AL ZAHRA AL MALAKIA", 22, 23);
-      pdf.setFont('helvetica', 'normal');
-      pdf.setFontSize(10);
-      pdf.text("Building Materials Trading L.L.C", 22, 28);
+        pdf.setTextColor(83, 144, 154);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(16);
+        pdf.text("Al Zahra Al Malakia", 16, 17);
+        pdf.setTextColor(60, 120, 130);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(9);
+        pdf.text("Building Materials Trading L.L.C", 16, 23);
 
-      // Draw stylized premium AZ logo banner on right
-      pdf.setFillColor(255, 255, 255);
-      pdf.rect(160, 19, 16, 16, 'F');
-      pdf.setDrawColor(255, 255, 255);
-      pdf.setLineWidth(1);
-      pdf.rect(160, 19, 16, 16, 'D');
+        // Logo Center
+        pdf.setFillColor(255, 255, 255);
+        pdf.setDrawColor(83, 144, 154);
+        pdf.setLineWidth(0.5);
+        
+        pdf.rect(98, 9, 14, 20, 'FD'); // Box
+        pdf.setTextColor(26, 58, 92);
+        pdf.setFontSize(11);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text("AZM", 105, 20, { align: 'center' });
 
-      pdf.setTextColor(30, 41, 59);
-      pdf.setFont('helvetica', 'bold');
-      pdf.setFontSize(11);
-      pdf.text("AZ", 168, 29, { align: 'center' });
+        // Arabic Side 
+        pdf.setTextColor(83, 144, 154);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(14);
+        // Using basic fallback text since jsPDF core lacks Arabic shaping.
+        pdf.text("الزهرة الملكية", 194, 17, { align: 'right' });
+        pdf.setTextColor(60, 120, 130);
+        pdf.setFontSize(9);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text("لتجارة مواد البناء ذ.م.م", 194, 23, { align: 'right' });
 
-      // Slogan below top bar
-      pdf.setTextColor(100, 116, 139);
-      pdf.setFontSize(7.5);
-      pdf.setFont('helvetica', 'medium');
-      const subheaderText = "Tel: +971 4 28 444 52 | Add.: Shop No. 12, Building Materials Mall, Dubai, U.A.E | Email: office@alzahrabm.com";
-      pdf.text(subheaderText, 105, 43, { align: 'center' });
+        // Contact Info Line
+        pdf.setTextColor(83, 144, 154);
+        pdf.setFontSize(8.5);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text("Tel: +971 4 28 444 52  |  Add.: Shop No. 12, Building Materials Mall, Dubai, U.A.E  |  Email: office@alzahrabm.com", 105, 34, { align: 'center' });
+
+        // --- FOOTER ---
+        const pageHeight = 297;
+        
+        // Brands
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(30, 58, 138);
+
+        const brands = ["VADO", "Jaquar", "ITALIAN STANDARDS", "NOURK", "SANIT", "KLUDI RAK", "SONET"];
+        const spacing = 180 / (brands.length - 1);
+        brands.forEach((brand, idx) => {
+          pdf.text(brand, 15 + idx * spacing, pageHeight - 17, { align: idx === 0 ? 'left' : idx === brands.length - 1 ? 'right' : 'center' });
+        });
+
+        // Banner Base
+        const bannerStartY = pageHeight - 12;
+        pdf.setFillColor(83, 144, 154); // Teal
+        pdf.rect(0, bannerStartY, 70, 12, 'F');
+        pdf.setFillColor(26, 58, 92); // Navy
+        pdf.rect(70, bannerStartY, 140, 12, 'F');
+        
+        // Slant (creates an angled cut)
+        pdf.setFillColor(26, 58, 92);
+        pdf.triangle(63, bannerStartY + 12, 70, bannerStartY, 70, bannerStartY + 12, 'F');
+
+        pdf.setTextColor(255, 255, 255);
+        pdf.setFontSize(9);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text("www.alzahrabm.com", 15, bannerStartY + 7.5);
+        pdf.text("Empowering Projects. Shaping spaces.", 195, bannerStartY + 7.5, { align: 'right' });
+        
+        // Page Number
+        pdf.setTextColor(255, 255, 255);
+        pdf.setFontSize(8);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text(`Page ${pageNum} of ${totalPagesExp}`, 105, bannerStartY + 7.5, { align: 'center' });
+      };
+
+      let currentPage = 1;
+      drawHeaderAndFooter(currentPage);
 
       // Left-side Customer Info Table
       autoTable(pdf, {
-        startY: 48,
+        startY: 42,
         margin: { left: 15 },
         tableWidth: 92,
         theme: 'grid',
@@ -232,7 +284,7 @@ function QuotationBuilder() {
 
       // Right-side Quotation Table
       autoTable(pdf, {
-        startY: 48,
+        startY: 42,
         margin: { left: 113 },
         tableWidth: 82,
         theme: 'grid',
@@ -267,13 +319,15 @@ function QuotationBuilder() {
         ];
       });
 
+      const headFinalY = (pdf as any).lastAutoTable.finalY + 5;
+
       // Draw Main Items table
       autoTable(pdf, {
-        startY: 106,
-        margin: { left: 15, right: 15, top: 25, bottom: 35 },
+        startY: headFinalY,
+        margin: { left: 15, right: 15, top: 40, bottom: 25 },
         theme: 'grid',
         styles: { valign: 'middle', fontSize: 8.5, cellPadding: 3, font: 'helvetica' },
-        headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', halign: 'center', lineWidth: 0.2, lineColor: [200, 200, 200] },
+        headStyles: { fillColor: [45, 108, 122], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center', lineWidth: 0.2, lineColor: [200, 200, 200] },
         bodyStyles: { minCellHeight: 14 },
         columnStyles: {
           0: { cellWidth: 12, halign: 'center' },
@@ -314,26 +368,10 @@ function QuotationBuilder() {
           }
         },
         didDrawPage: (data) => {
-          // Running header on pages > 1
           if (data.pageNumber > 1) {
-            pdf.setFontSize(7.5);
-            pdf.setFont('helvetica', 'bold');
-            pdf.setTextColor(30, 41, 59);
-            pdf.text("AL ZAHRA AL MALAKIA - BUILDING MATERIALS TRADING L.L.C", 15, 12);
-            pdf.setFont('helvetica', 'normal');
-            pdf.setTextColor(100);
-            pdf.text(`Quotation No: ${safeQuoteNo}`, 195, 12, { align: 'right' });
-            pdf.setLineWidth(0.2);
-            pdf.setDrawColor(226, 232, 240);
-            pdf.line(15, 14, 195, 14);
+            drawHeaderAndFooter(data.pageNumber);
           }
-
-          // Dynamic running footer on all pages
-          pdf.setFontSize(7);
-          pdf.setFont('helvetica', 'normal');
-          pdf.setTextColor(148, 163, 184);
-          pdf.text(`Printed on ${format(new Date(), 'dd MMM yyyy HH:mm')}`, 15, 287);
-          pdf.text(`Page ${data.pageNumber} of ${totalPagesExp}`, 195, 287, { align: 'right' });
+          currentPage = data.pageNumber;
         }
       });
 
@@ -341,9 +379,11 @@ function QuotationBuilder() {
       let finalY = (pdf as any).lastAutoTable.finalY || 106;
       const requiredFooterHeight = 85;
       
-      if (finalY + requiredFooterHeight > 275) {
+      if (finalY + requiredFooterHeight > 272) {
         pdf.addPage();
-        finalY = 20;
+        currentPage++;
+        drawHeaderAndFooter(currentPage);
+        finalY = 40;
       }
 
       const footerStartY = finalY + 8;
@@ -476,22 +516,6 @@ function QuotationBuilder() {
       pdf.setFont('helvetica', 'bold');
       pdf.setTextColor(15, 23, 42);
       pdf.text("Authorised Signature", 130, termsStartY + 34);
-
-      // Top Quality Brands Bar
-      const brandsStartY = termsStartY + 44;
-      pdf.setLineWidth(0.25);
-      pdf.setDrawColor(30, 58, 138);
-      pdf.line(15, brandsStartY, 195, brandsStartY);
-
-      pdf.setFontSize(7.5);
-      pdf.setFont('helvetica', 'bold');
-      pdf.setTextColor(100, 116, 139);
-
-      const brands = ["VADO", "Jaquar", "ITALIAN STANDARDS", "NOURK", "SANIT", "KLUDI RAK", "SONET"];
-      const spacing = 180 / (brands.length - 1);
-      brands.forEach((brand, idx) => {
-        pdf.text(brand, 15 + idx * spacing, brandsStartY + 4, { align: idx === 0 ? 'left' : idx === brands.length - 1 ? 'right' : 'center' });
-      });
 
       // 4. Multi-pass page counting replacement
       if (typeof pdf.putTotalPages === 'function') {
