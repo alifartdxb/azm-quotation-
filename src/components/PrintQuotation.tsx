@@ -101,6 +101,9 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
 
   const safeItems = quotation?.items || [];
   const safeSubTotal = quotation?.subTotal || 0;
+  const discountRate = quotation?.discountRate || 0;
+  const discountTotal = quotation?.discountTotal || 0;
+  const netTotal = quotation?.netTotal || safeSubTotal;
   const safeVatAmount = quotation?.vatAmount || 0;
   const safeGrandTotal = quotation?.grandTotal || 0;
   const safeQuoteNo = quotation?.quoteNo || 'Draft';
@@ -257,8 +260,12 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
                       <tr key={item.id} className="page-break-inside-avoid">
                         <td>{srNo}</td>
                         <td className="text-left">
-                          <div className="font-bold text-gray-800">{item.product?.sku || ''}</div>
-                          <div className="text-gray-600 text-[10px] leading-tight mt-0.5">{item.product?.name || ''}</div>
+                          {item.productId !== 'MANUAL' && (
+                            <div className="font-bold text-gray-800">{item.product?.sku || ''}</div>
+                          )}
+                          <div className={`text-gray-600 text-[10px] leading-tight ${item.productId === 'MANUAL' ? 'font-bold mt-0' : 'mt-0.5'}`}>
+                            {item.product?.name || (item.productId === 'MANUAL' ? 'Manual Item' : '')}
+                          </div>
                         </td>
                         <td className="p-0.5">
                           {imgUrl ? (
@@ -316,6 +323,18 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
                             <td className="font-bold w-1/2">Sub Total</td>
                             <td className="font-bold">{formatCurrency(safeSubTotal)}</td>
                           </tr>
+                          {!!(discountRate && discountRate > 0) && (
+                            <>
+                              <tr>
+                                <td className="text-gray-600">Discount ({discountRate}%)</td>
+                                <td className="text-emerald-700 font-medium">-{formatCurrency(discountTotal)}</td>
+                              </tr>
+                              <tr>
+                                <td className="font-bold">Net Total</td>
+                                <td className="font-bold">{formatCurrency(netTotal)}</td>
+                              </tr>
+                            </>
+                          )}
                           <tr>
                             <td className="font-bold bg-slate-100">VAT 5%</td>
                             <td className="bg-slate-100 font-medium">{formatCurrency(safeVatAmount)}</td>

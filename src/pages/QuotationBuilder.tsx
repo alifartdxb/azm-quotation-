@@ -90,7 +90,7 @@ function QuotationBuilder() {
       alert("Error: Quotation number is missing.");
       return;
     }
-    if (!quote.customer || !quote.customer.companyName || !quote.customer.customerName) {
+    if (!quote.customer || !quote.customer.customerName) {
       alert("Error: Customer information is incomplete.");
       return;
     }
@@ -152,15 +152,13 @@ function QuotationBuilder() {
 
       const safeCustomer = quote.customer || {
         customerName: '',
-        companyName: '',
         contactPerson: '',
         mobile: '',
         email: '',
         trn: '',
         projectName: '',
         siteLocation: '',
-        address: '',
-        reference: ''
+        address: ''
       };
 
       const safeItems = quote.items || [];
@@ -522,7 +520,7 @@ function QuotationBuilder() {
 
       // Save PDF output
       const sanitizeName = (name: string) => name.replace(/[/\\?%*:|"<>]/g, '-').trim();
-      const company = quote.customer?.companyName || quote.customer?.customerName || 'Customer';
+      const company = quote.customer?.customerName || 'Customer';
       const quoteNo = quote.quoteNo || 'Draft';
       const docName = sanitizeName(`Quotation_${quoteNo}_${company}.pdf`);
       
@@ -690,17 +688,50 @@ function QuotationBuilder() {
     }));
   };
 
-  const updateItem = (index: number, field: keyof QuoteItem, value: any) => {
+  const addManualItem = () => {
+    setQuote(prev => ({
+      ...prev,
+      items: [...(prev.items || []), {
+        id: uuidv4(),
+        productId: 'MANUAL',
+        product: {
+          id: 'manual',
+          sku: '',
+          name: '',
+          brand: '',
+          price: 0,
+          unit: 'Job',
+          category: 'Manual'
+        } as Product,
+        qty: 1,
+        unitPrice: 0,
+        discountAmt: 0,
+        total: 0
+      }]
+    }));
+  };
+
+  const updateItem = (index: number, field: keyof QuoteItem | 'manualName' | 'manualUnit', value: any) => {
     const newItems = [...(quote.items || [])];
     const item = { ...newItems[index] };
     
     if (field === 'productId') {
-      const prod = products.find(p => p.id === value);
-      if (prod) {
-        item.productId = prod.id;
-        item.product = prod;
-        item.unitPrice = prod.price;
+      if (value === 'MANUAL') {
+        // preserve manual item
+      } else {
+        const prod = products.find(p => p.id === value);
+        if (prod) {
+          item.productId = prod.id;
+          item.product = prod;
+          item.unitPrice = prod.price;
+        }
       }
+    } else if (field === 'manualName') {
+      item.product.name = value;
+    } else if (field === 'manualUnit') {
+      item.product.unit = value;
+    } else if (field === 'manualImage') {
+      item.product.image = value;
     } else {
       (item as any)[field] = value;
     }
@@ -717,23 +748,38 @@ function QuotationBuilder() {
     recalculateTotals(newItems);
   };
 
-  const recalculateTotals = (items: QuoteItem[]) => {
+  const handleManualImageUpload = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        updateItem(index, 'manualImage', reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const recalculateTotals = (items: QuoteItem[], discountRate: number = quote.discountRate || 0) => {
     const subTotal = items.reduce((sum, item) => sum + (item.qty * item.unitPrice), 0);
-    const vatAmount = subTotal * 0.05;
-    const grandTotal = subTotal + vatAmount;
+    const discountAmount = (subTotal * discountRate) / 100;
+    const netTotal = subTotal - discountAmount;
+    const vatAmount = netTotal * 0.05;
+    const grandTotal = netTotal + vatAmount;
 
     setQuote(prev => ({
       ...prev,
       items,
       subTotal: Math.round(subTotal * 100) / 100,
-      discountTotal: 0,
+      discountRate,
+      discountTotal: Math.round(discountAmount * 100) / 100,
+      netTotal: Math.round(netTotal * 100) / 100,
       vatAmount: Math.round(vatAmount * 100) / 100,
       grandTotal: Math.round(grandTotal * 100) / 100
     }));
   };
 
   const handleSave = async () => {
-    if (!quote.customer?.companyName && !quote.customer?.customerName) return alert("Please enter Customer or Company Name");
+    if (!quote.customer?.customerName) return alert("Please enter Customer Name");
     setIsSaving(true);
     
     try {
@@ -847,7 +893,7 @@ function QuotationBuilder() {
             <>
               <button 
                 onClick={() => {
-                  const msg = encodeURIComponent(`Dear ${quote.customer?.companyName || 'Customer'},\n\nPlease find our quotation ${quote.quoteNo}.\n\nThank you.\nBest Regards,\nAZM Group`);
+                  const msg = encodeURIComponent(`Dear ${quote.customer?.customerName || 'Customer'},\n\nPlease find our quotation ${quote.quoteNo}.\n\nThank you.\nBest Regards,\nAZM Group`);
                   window.open(`https://wa.me/${quote.customer?.mobile.replace(/\D/g, '')}?text=${msg}`, '_blank');
                 }}
                 className="bg-[#25D366] hover:bg-[#20b858] text-white px-5 py-2 rounded-lg flex items-center gap-2 text-sm font-semibold transition-all shadow-sm active:scale-95"
@@ -913,11 +959,6 @@ function QuotationBuilder() {
                <h3 className="text-sm font-bold text-slate-800 uppercase tracking-tight mb-4 border-b border-slate-100 pb-3">Customer Information</h3>
                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                  <div>
-                   <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Company Name</label>
-                   <input type="text" className="w-full border border-slate-200 bg-slate-50 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                     value={quote.customer?.companyName || ''} onChange={e => setQuote({...quote, customer: {...quote.customer!, companyName: e.target.value}})} />
-                 </div>
-                 <div>
                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Customer Name</label>
                    <input type="text" className="w-full border border-slate-200 bg-slate-50 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                      value={quote.customer?.customerName || ''} onChange={e => setQuote({...quote, customer: {...quote.customer!, customerName: e.target.value}})} />
@@ -937,11 +978,6 @@ function QuotationBuilder() {
                    <input type="text" className="w-full border border-slate-200 bg-slate-50 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                      value={quote.customer?.trn || ''} onChange={e => setQuote({...quote, customer: {...quote.customer!, trn: e.target.value}})} />
                  </div>
-                 <div>
-                   <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Reference Number</label>
-                   <input type="text" className="w-full border border-slate-200 bg-slate-50 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                     value={quote.customer?.reference || ''} onChange={e => setQuote({...quote, customer: {...quote.customer!, reference: e.target.value}})} />
-                 </div>
                  <div className="md:col-span-2 lg:col-span-3">
                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Address</label>
                    <input type="text" className="w-full border border-slate-200 bg-slate-50 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
@@ -953,16 +989,21 @@ function QuotationBuilder() {
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
               <div className="p-5 border-b border-slate-100 flex items-center justify-between">
                  <h3 className="text-sm font-bold text-slate-800 uppercase tracking-tight">Line Items</h3>
-                 <button onClick={addItem} className="text-xs text-blue-600 font-semibold flex items-center gap-1 hover:underline">
-                   <Plus className="w-3 h-3"/> Add Item
-                 </button>
+                 <div className="flex gap-4">
+                   <button onClick={addItem} className="text-xs text-blue-600 font-semibold flex items-center gap-1 hover:underline">
+                     <Plus className="w-3 h-3"/> Add Product
+                   </button>
+                   <button onClick={addManualItem} className="text-xs text-emerald-600 font-semibold flex items-center gap-1 hover:underline">
+                     <Plus className="w-3 h-3"/> Add Manual Item
+                   </button>
+                 </div>
               </div>
               
               <div className="overflow-x-auto p-5">
                 <table className="w-full text-left">
                   <thead className="bg-slate-50 text-[10px] uppercase tracking-wider text-slate-500">
                     <tr>
-                      <th className="px-4 py-3 w-1/3">Product</th>
+                      <th className="px-4 py-3 w-1/3">Product / Description</th>
                       <th className="px-4 py-3">Qty</th>
                       <th className="px-4 py-3">Unit Price</th>
                       <th className="px-4 py-3 text-right">Total</th>
@@ -973,18 +1014,45 @@ function QuotationBuilder() {
                     {quote.items?.map((item, idx) => (
                       <tr key={item.id} className="hover:bg-slate-50/50">
                         <td className="py-3 px-4">
-                           <select 
-                             className="w-full border border-slate-200 bg-white rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                             value={item.productId}
-                             onChange={e => updateItem(idx, 'productId', e.target.value)}
-                           >
-                             <option value="">Select product...</option>
-                             {products.map(p => <option key={p.id} value={p.id}>{p.sku} - {p.name}</option>)}
-                           </select>
+                           {item.productId === 'MANUAL' ? (
+                             <div className="flex flex-col gap-2">
+                               <input 
+                                 type="text"
+                                 placeholder="Item Description"
+                                 className="w-full border border-slate-200 bg-white rounded-md p-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                                 value={item.product?.name || ''}
+                                 onChange={e => updateItem(idx, 'manualName', e.target.value)}
+                               />
+                               <div className="flex items-center gap-2">
+                                 {item.product?.image && (
+                                   <img src={item.product.image} className="w-8 h-8 rounded border object-cover" alt="Thumb" />
+                                 )}
+                                 <label className="text-xs text-slate-500 hover:text-emerald-600 cursor-pointer flex items-center gap-1 border border-dashed border-slate-300 px-2 py-1.5 rounded-md hover:bg-slate-50 transition-colors">
+                                   <Plus className="w-3 h-3" /> Image
+                                   <input type="file" accept="image/*" className="hidden" onChange={(e) => handleManualImageUpload(idx, e)} />
+                                 </label>
+                               </div>
+                             </div>
+                           ) : (
+                             <select 
+                               className="w-full border border-slate-200 bg-white rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                               value={item.productId}
+                               onChange={e => updateItem(idx, 'productId', e.target.value)}
+                             >
+                               <option value="">Select product...</option>
+                               {products.map(p => <option key={p.id} value={p.id}>{p.sku} - {p.name}</option>)}
+                             </select>
+                           )}
                         </td>
                         <td className="py-3 px-4">
-                          <input type="number" min="1" className="w-20 border border-slate-200 bg-white rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" 
-                             value={item.qty} onChange={e => updateItem(idx, 'qty', Number(e.target.value))} />
+                          <div className="flex items-center gap-2">
+                            <input type="number" min="1" className="w-20 border border-slate-200 bg-white rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" 
+                               value={item.qty} onChange={e => updateItem(idx, 'qty', Number(e.target.value))} />
+                            {item.productId === 'MANUAL' && (
+                              <input type="text" placeholder="Unit" className="w-16 border border-slate-200 bg-white rounded-md p-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" 
+                                value={item.product?.unit || ''} onChange={e => updateItem(idx, 'manualUnit', e.target.value)} />
+                            )}
+                          </div>
                         </td>
                         <td className="py-3 px-4">
                           <input type="number" className="w-28 border border-slate-200 bg-white rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" 
@@ -1003,7 +1071,7 @@ function QuotationBuilder() {
                     {quote.items?.length === 0 && (
                       <tr>
                         <td colSpan={6} className="py-8 text-center text-slate-500 text-sm bg-slate-50/50">
-                          No items added yet. Click "Add Item" to begin.
+                          No items added yet. Click "Add Product" or "Add Manual Item" to begin.
                         </td>
                       </tr>
                     )}
@@ -1012,12 +1080,38 @@ function QuotationBuilder() {
   
                 {/* Live Totals summary */}
                 <div className="mt-6 flex justify-end">
-                   <div className="w-72 bg-slate-50 p-5 rounded-xl space-y-3 border border-slate-200 shadow-sm">
+                   <div className="w-80 bg-slate-50 p-5 rounded-xl space-y-3 border border-slate-200 shadow-sm">
                       <div className="flex justify-between text-sm text-slate-600">
-                        <span>Subtotal</span>
+                        <span>Sub Total</span>
                         <span className="font-mono font-medium text-slate-900">{formatCurrency(quote.subTotal || 0)}</span>
                       </div>
-                      <div className="flex justify-between text-sm text-slate-600 border-b border-slate-200 pb-3">
+                      
+                      <div className="flex justify-between items-center text-sm text-slate-600">
+                        <span>Discount (%)</span>
+                        <input 
+                          type="number" 
+                          min="0" 
+                          max="100" 
+                          className="w-20 border border-slate-200 bg-white rounded-md p-1.5 text-sm text-right focus:ring-2 focus:ring-blue-500 outline-none"
+                          value={quote.discountRate || ''}
+                          onChange={e => recalculateTotals(quote.items, Number(e.target.value))}
+                        />
+                      </div>
+
+                      {!!(quote.discountRate && quote.discountRate > 0) && (
+                        <>
+                          <div className="flex justify-between text-sm text-emerald-600">
+                            <span>Discount Amount</span>
+                            <span className="font-mono font-medium">-{formatCurrency(quote.discountTotal || 0)}</span>
+                          </div>
+                          <div className="flex justify-between text-sm text-slate-800 font-semibold border-t border-slate-200 pt-2">
+                            <span>Net Total</span>
+                            <span className="font-mono">{formatCurrency(quote.netTotal || quote.subTotal || 0)}</span>
+                          </div>
+                        </>
+                      )}
+                      
+                      <div className="flex justify-between text-sm text-slate-600 border-b border-slate-200 pb-3 mt-2">
                         <span>VAT (5%)</span>
                         <span className="font-mono font-medium text-slate-900">{formatCurrency(quote.vatAmount || 0)}</span>
                       </div>

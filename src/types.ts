@@ -24,7 +24,7 @@ export interface Product {
 
 export interface QuoteItem {
   id: string;
-  productId: string;
+  productId?: string;
   product: Product;
   qty: number;
   unitPrice: number;
@@ -41,7 +41,9 @@ export interface Quotation {
   subject?: string;
   items: QuoteItem[];
   subTotal: number;
+  discountRate?: number;
   discountTotal?: number;
+  netTotal?: number;
   vatAmount: number;
   grandTotal: number;
   status: 'Draft' | 'Pending Approval' | 'Approved' | 'Rejected' | 'Sent' | 'Expired' | 'Converted to Order' | string;
