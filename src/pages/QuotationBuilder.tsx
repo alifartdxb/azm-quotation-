@@ -970,8 +970,21 @@ function QuotationBuilder() {
             <>
               <button 
                 onClick={() => {
-                  const msg = encodeURIComponent(`Dear ${quote.customer?.customerName || 'Customer'},\n\nPlease find our quotation ${quote.quoteNo}.\n\nThank you.\nBest Regards,\nAZM Group`);
-                  window.open(`https://wa.me/${quote.customer?.mobile.replace(/\D/g, '')}?text=${msg}`, '_blank');
+                  let baseMsg = '';
+                  if (appSettings?.whatsappTemplate) {
+                    baseMsg = appSettings.whatsappTemplate
+                      .replace('{{customer_name}}', quote.customer?.customerName || 'Customer')
+                      .replace('{{quotation_no}}', quote.quoteNo || '');
+                  } else {
+                    baseMsg = `Dear ${quote.customer?.customerName || 'Customer'},\n\nPlease find our quotation ${quote.quoteNo}.\n\nThank you.\nBest Regards,\nAZM Group`;
+                  }
+                  const msg = encodeURIComponent(baseMsg);
+                  const mobile = quote.customer?.mobile || '';
+                  const mobileClean = mobile.replace(/\D/g, '');
+                  const url = mobileClean 
+                    ? `https://wa.me/${mobileClean}?text=${msg}` 
+                    : `https://wa.me/?text=${msg}`;
+                  window.open(url, '_blank');
                 }}
                 className="bg-[#25D366] hover:bg-[#20b858] text-white px-5 py-2 rounded-lg flex items-center gap-2 text-sm font-semibold transition-all shadow-sm active:scale-95"
               >
