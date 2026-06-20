@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import type { Product } from '../types';
-import { Plus, Search, Image as ImageIcon, Upload, FileSpreadsheet, X, Save } from 'lucide-react';
+import { Plus, Search, Image as ImageIcon, Upload, FileSpreadsheet, X, Save, Pencil, Trash2 } from 'lucide-react';
 import { formatCurrency } from '../lib/utils';
-import { getProducts, db } from '../lib/firebase';
-import { collection, writeBatch, doc, addDoc } from 'firebase/firestore';
+import { getProducts, db, logActivity } from '../lib/firebase';
+import { collection, writeBatch, doc, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 
@@ -19,7 +19,11 @@ export default function Products() {
   const [newProduct, setNewProduct] = useState<Partial<Product>>({
     sku: '', name: '', brand: '', price: 0, unit: 'Pcs', category: '', image: ''
   });
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [formError, setFormError] = useState<string>('');
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [productToDelete, setProductToDelete] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
     loadProducts();
@@ -124,16 +128,81 @@ export default function Products() {
   };
 
   const handleSaveProduct = async () => {
-    if (!newProduct.sku || !newProduct.name || !newProduct.price) return alert("Please fill required fields: SKU, Name, Price");
+    if (!newProduct.sku || !newProduct.name || !newProduct.price) {
+      setFormError("Please fill required fields: SKU, Name, Price");
+      return;
+    }
     setIsSaving(true);
+    setFormError('');
     try {
-      await addDoc(collection(db, 'products'), newProduct);
+      if (editingId) {
+        await updateDoc(doc(db, 'products', editingId), {
+          sku: newProduct.sku,
+          name: newProduct.name,
+          brand: newProduct.brand || 'Generic',
+          price: Number(newProduct.price),
+          unit: newProduct.unit || 'Pcs',
+          category: newProduct.category || 'General',
+          image: newProduct.image || ''
+        });
+        await logActivity('Update Product', 'System', editingId, `Updated product SKU: ${newProduct.sku}, Name: ${newProduct.name}`);
+      } else {
+        const docRef = await addDoc(collection(db, 'products'), {
+          sku: newProduct.sku,
+          name: newProduct.name,
+          brand: newProduct.brand || 'Generic',
+          price: Number(newProduct.price),
+          unit: newProduct.unit || 'Pcs',
+          category: newProduct.category || 'General',
+          image: newProduct.image || ''
+        });
+        await logActivity('Create Product', 'System', docRef.id, `Created product SKU: ${newProduct.sku}, Name: ${newProduct.name}`);
+      }
       setIsModalOpen(false);
       setNewProduct({ sku: '', name: '', brand: '', price: 0, unit: 'Pcs', category: '', image: '' });
+      setEditingId(null);
+      setFormError('');
       loadProducts();
     } catch (error) {
        console.error(error);
-       alert("Failed to save product");
+       setFormError("Failed to save product. Please try again.");
+    } finally {
+       setIsSaving(false);
+    }
+  };
+
+  const handleEditProduct = (product: Product) => {
+    setNewProduct({
+      sku: product.sku || '',
+      name: product.name || '',
+      brand: product.brand || 'Generic',
+      price: product.price || 0,
+      unit: product.unit || 'Pcs',
+      category: product.category || 'General',
+      image: product.image || ''
+    });
+    setEditingId(product.id);
+    setFormError('');
+    setIsModalOpen(true);
+  };
+
+  const handleDeleteProduct = (id: string, name: string) => {
+    setProductToDelete({ id, name });
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDeleteProduct = async () => {
+    if (!productToDelete) return;
+    setIsSaving(true);
+    try {
+      await deleteDoc(doc(db, 'products', productToDelete.id));
+      await logActivity('Delete Product', 'System', productToDelete.id, `Deleted product: ${productToDelete.name}`);
+      setIsDeleteModalOpen(false);
+      setProductToDelete(null);
+      loadProducts();
+    } catch (error) {
+      console.error(error);
+      alert("Failed to delete product from database.");
     } finally {
       setIsSaving(false);
     }
@@ -179,7 +248,14 @@ export default function Products() {
             <Upload className="w-4 h-4" />
             {isImporting ? 'Importing...' : 'Import'}
           </button>
-          <button onClick={() => setIsModalOpen(true)} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-semibold shadow-sm transition-all active:scale-95">
+          <button 
+            onClick={() => {
+              setEditingId(null);
+              setNewProduct({ sku: '', name: '', brand: '', price: 0, unit: 'Pcs', category: '', image: '' });
+              setIsModalOpen(true);
+            }} 
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-semibold shadow-sm transition-all active:scale-95"
+          >
             <Plus className="w-4 h-4" />
             <span>Add Product</span>
           </button>
@@ -191,12 +267,17 @@ export default function Products() {
         <div className="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-slate-100 flex justify-between items-center sticky top-0 bg-white z-10">
-              <h2 className="text-lg font-bold text-slate-900">Add New Product</h2>
+              <h2 className="text-lg font-bold text-slate-900">{editingId ? 'Edit Product' : 'Add New Product'}</h2>
               <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600">
                 <X className="w-5 h-5" />
               </button>
             </div>
             <div className="p-6 space-y-6">
+               {formError && (
+                 <div className="p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm font-semibold">
+                   {formError}
+                 </div>
+               )}
                <div className="flex justify-center">
                  <div className="relative w-32 h-32 border-2 border-dashed border-slate-300 rounded-xl overflow-hidden hover:border-blue-500 transition-colors cursor-pointer flex items-center justify-center bg-slate-50 group">
                     {newProduct.image ? (
@@ -253,6 +334,41 @@ export default function Products() {
         </div>
       )}
 
+      {/* Delete Confirmation Modal */}
+      {isDeleteModalOpen && productToDelete && (
+        <div className="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden border border-slate-100">
+            <div className="p-6 text-center">
+              <div className="w-12 h-12 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-100">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 mb-2">Delete Product</h3>
+              <p className="text-sm text-slate-500 mb-6">
+                Are you sure you want to delete <span className="font-semibold text-slate-800">"{productToDelete.name}"</span>? This action cannot be undone and will remove the product permanently from your catalog.
+              </p>
+              <div className="flex justify-center gap-3">
+                <button 
+                  onClick={() => {
+                    setIsDeleteModalOpen(false);
+                    setProductToDelete(null);
+                  }} 
+                  className="px-4 py-2 border border-slate-200 hover:bg-slate-50 rounded-lg text-sm font-semibold text-slate-600 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button 
+                  disabled={isSaving}
+                  onClick={confirmDeleteProduct} 
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-semibold transition-all shadow-sm active:scale-95 disabled:opacity-50"
+                >
+                  {isSaving ? "Deleting..." : "Delete Product"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
         <div className="p-5 border-b border-slate-100 flex items-center justify-between">
           <h3 className="font-bold text-slate-800">All Products</h3>
@@ -273,7 +389,7 @@ export default function Products() {
              <div className="p-8 text-center text-slate-500">Loading products...</div>
           ) : (
             <table className="w-full text-left">
-              <thead className="bg-slate-50 text-[10px] uppercase tracking-wider text-slate-500">
+              <thead className="bg-[#509AA3] text-white text-[11px] uppercase tracking-wider font-semibold">
                 <tr>
                   <th className="px-6 py-3 w-24">Image</th>
                   <th className="px-6 py-3">SKU / Product Info</th>
@@ -309,9 +425,24 @@ export default function Products() {
                       <span className="text-slate-400 font-normal text-xs ml-1">/ {product.unit}</span>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button className="text-[11px] text-blue-600 font-semibold hover:underline opacity-0 group-hover:opacity-100 transition-opacity">
-                        Edit
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        <button 
+                          onClick={() => handleEditProduct(product)}
+                          className="flex items-center gap-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition shadow-sm active:scale-95"
+                          title="Edit product"
+                        >
+                          <Pencil className="w-3.5 h-3.5 text-blue-600" />
+                          <span>Edit</span>
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteProduct(product.id, product.name)}
+                          className="flex items-center gap-1.5 bg-red-50 hover:bg-red-100 border border-red-100 text-red-600 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition shadow-sm active:scale-95"
+                          title="Delete product"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                          <span>Delete</span>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

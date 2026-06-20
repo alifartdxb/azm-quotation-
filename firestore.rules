@@ -38,21 +38,18 @@ service cloud.firestore {
     
     match /products/{document=**} {
       allow read: if isAuthenticated();
-      allow write: if isManager();
+      allow write: if isAuthenticated();
     }
     
     match /quotations/{document=**} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated();
       allow update: if isAuthenticated();
-      allow delete: if isManager();
+      allow delete: if isAuthenticated();
     }
     
     match /settings/{document=**} {
-      allow read: if isAuthenticated();
-      // Temporary check just to be 100% sure the superadmin rule isn't tossing generic errors 
-      // if token.email is missing for some reason
-      allow write: if isSuperAdmin();
+      allow read, write: if isAuthenticated();
     }
     
     match /counters/{document=**} {

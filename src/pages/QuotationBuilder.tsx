@@ -320,11 +320,11 @@ function QuotationBuilder() {
         margin: { left: 8 },
         tableWidth: 95,
         theme: 'grid',
-        styles: { fontSize: 8.8, cellPadding: { top: 1.5, bottom: 1.5, left: 4, right: 4 }, font: 'helvetica' },
-        headStyles: { fontSize: 11, fillColor: [27, 107, 114], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
+        styles: { fontSize: 8.8, cellPadding: { top: 1.5, bottom: 1.5, left: 4, right: 4 }, font: 'helvetica', textColor: [15, 23, 42] },
+        headStyles: { fontSize: 11, fillColor: [80, 154, 163], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
         columnStyles: {
           0: { cellWidth: 35, fontStyle: 'bold', fillColor: [248, 250, 252] },
-          1: { cellWidth: 'auto', textColor: [51, 65, 85] }
+          1: { cellWidth: 'auto', textColor: [15, 23, 42] }
         },
         head: [[{ content: 'CUSTOMER INFORMATION', colSpan: 2 }]],
         body: [
@@ -346,11 +346,11 @@ function QuotationBuilder() {
         margin: { left: 107 },
         tableWidth: 95,
         theme: 'grid',
-        styles: { fontSize: 8.8, cellPadding: { top: 1.5, bottom: 1.5, left: 4, right: 4 }, font: 'helvetica' },
-        headStyles: { fontSize: 11, fillColor: [27, 107, 114], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
+        styles: { fontSize: 8.8, cellPadding: { top: 1.5, bottom: 1.5, left: 4, right: 4 }, font: 'helvetica', textColor: [15, 23, 42] },
+        headStyles: { fontSize: 11, fillColor: [80, 154, 163], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
         columnStyles: {
           0: { cellWidth: 28, fontStyle: 'bold', fillColor: [248, 250, 252] },
-          1: { cellWidth: 'auto', textColor: [51, 65, 85] }
+          1: { cellWidth: 'auto', textColor: [15, 23, 42] }
         },
         head: [[{ content: 'QUOTATION DETAILS', colSpan: 2 }]],
         body: [
@@ -394,8 +394,8 @@ function QuotationBuilder() {
         startY: headFinalY,
         margin: { left: 8, right: 8, top: tablesStartY, bottom: bottomMargin },
         theme: 'grid',
-        styles: { valign: 'middle', fontSize: 8.5, cellPadding: 3, font: 'helvetica' },
-        headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', halign: 'center', lineWidth: 0.1, lineColor: [203, 213, 225] },
+        styles: { valign: 'middle', fontSize: 8.5, cellPadding: 3, font: 'helvetica', textColor: [15, 23, 42] },
+        headStyles: { fillColor: [80, 154, 163], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center', lineWidth: 0.1, lineColor: [203, 213, 225] },
         bodyStyles: { minCellHeight: 16, lineColor: [203, 213, 225], lineWidth: 0.1 },
         columnStyles: {
           0: { cellWidth: 13.58, halign: 'center' }, // Sr. No. (7%)
@@ -459,7 +459,7 @@ function QuotationBuilder() {
 
       pdf.setFont('helvetica', 'normal');
       pdf.setFontSize(7.5);
-      pdf.setTextColor(51, 65, 85);
+      pdf.setTextColor(15, 23, 42);
       pdf.text("Bank Name:", 12, footerStartY + 11);
       pdf.setFont('helvetica', 'bold');
       pdf.text(appSettings?.bankName || "Dubai Islamic Bank", 35, footerStartY + 11);
@@ -530,7 +530,7 @@ function QuotationBuilder() {
 
       pdf.setFontSize(7);
       pdf.setFont('helvetica', 'normal');
-      pdf.setTextColor(51, 65, 85); // slate-700
+      pdf.setTextColor(15, 23, 42); // slate-900
 
       let terms = [
         "1. The above prices are in Dirhams (AED) quoted based on the quantities requested.",

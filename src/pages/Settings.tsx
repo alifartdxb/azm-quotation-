@@ -792,7 +792,7 @@ export default function Settings() {
                             disabled={isSalesManager}
                             checked={showStampInPdf} 
                             onChange={(e) => setShowStampInPdf(e.target.checked)}
-                            className="w-5 h-5 text-[#1b6b72] rounded border-slate-300 focus:ring-[#1b6b72] disabled:opacity-50"
+                            className="w-5 h-5 text-[#509AA3] rounded border-slate-300 focus:ring-[#509AA3] disabled:opacity-50"
                           />
                           <span className="text-sm font-medium text-slate-700">Show Company Stamp in PDF</span>
                         </label>
@@ -802,7 +802,7 @@ export default function Settings() {
                             disabled={isSalesManager}
                             checked={showStampInPreview} 
                             onChange={(e) => setShowStampInPreview(e.target.checked)}
-                            className="w-5 h-5 text-[#1b6b72] rounded border-slate-300 focus:ring-[#1b6b72] disabled:opacity-50"
+                            className="w-5 h-5 text-[#509AA3] rounded border-slate-300 focus:ring-[#509AA3] disabled:opacity-50"
                           />
                           <span className="text-sm font-medium text-slate-700">Show Company Stamp in Print Preview</span>
                         </label>
@@ -812,7 +812,7 @@ export default function Settings() {
                             disabled={isSalesManager}
                             checked={showStampOnLastPageOnly} 
                             onChange={(e) => setShowStampOnLastPageOnly(e.target.checked)}
-                            className="w-5 h-5 text-[#1b6b72] rounded border-slate-300 focus:ring-[#1b6b72] disabled:opacity-50"
+                            className="w-5 h-5 text-[#509AA3] rounded border-slate-300 focus:ring-[#509AA3] disabled:opacity-50"
                           />
                           <span className="text-sm font-medium text-slate-700">Show Company Stamp on Last Page Only</span>
                         </label>

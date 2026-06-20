@@ -172,7 +172,7 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
                     <table className="w-full h-full border-collapse border border-gray-300 text-[12px]">
                       <thead>
                         <tr>
-                          <th colSpan={2} className="bg-[#1b6b72] text-white text-center py-1 uppercase tracking-widest font-bold text-[14px] rounded-t-sm">
+                          <th colSpan={2} className="bg-[#509AA3] text-white text-center py-1 uppercase tracking-widest font-bold text-[14px] rounded-t-sm">
                             CUSTOMER INFORMATION
                           </th>
                         </tr>
@@ -211,7 +211,7 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
                     <table className="w-full h-full border-collapse border border-gray-300 text-[12px]">
                       <thead>
                         <tr>
-                          <th colSpan={2} className="bg-[#1b6b72] text-white text-center py-1 uppercase tracking-widest font-bold text-[14px] rounded-t-sm">
+                          <th colSpan={2} className="bg-[#509AA3] text-white text-center py-1 uppercase tracking-widest font-bold text-[14px] rounded-t-sm">
                             QUOTATION DETAILS
                           </th>
                         </tr>
@@ -250,7 +250,7 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
               {/* Items Table for this specific page */}
               <table className="w-full border-collapse border border-gray-300 text-center text-[11px] mb-0">
                 <thead>
-                  <tr className="bg-slate-100 border-b border-gray-300 [&>th]:py-1 [&>th]:px-1.5 [&>th]:border-x [&>th]:border-gray-300 [&>th]:font-semibold text-[11px]">
+                  <tr className="bg-[#509AA3] text-white border-b border-gray-300 [&>th]:py-1 [&>th]:px-1.5 [&>th]:border-x [&>th]:border-white/20 [&>th]:font-semibold text-[11px]">
                     <th className="w-[7%] text-center whitespace-nowrap px-1">Sr. No.</th>
                     <th className="text-left w-[30%]">Item Description</th>
                     <th className="w-[12%] text-center">Picture</th>
@@ -398,7 +398,7 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
                             className="h-auto max-h-16 w-full max-w-[140px] object-contain mix-blend-multiply opacity-90"
                           />
                         ) : (
-                          <div className="w-12 h-12 border border-[#1b6b72]/20 rounded-full flex items-center justify-center text-[#1b6b72]/20 rotate-[-15deg] font-semibold text-[6px] opacity-40">
+                          <div className="w-12 h-12 border border-[#509AA3]/20 rounded-full flex items-center justify-center text-[#509AA3]/20 rotate-[-15deg] font-semibold text-[6px] opacity-40">
                             COMPANY STAMP
                           </div>
                         )}
