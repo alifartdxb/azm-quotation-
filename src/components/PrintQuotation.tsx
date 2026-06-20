@@ -166,18 +166,18 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
 
               {/* First Page Meta Tables */}
               {isFirst && (
-                <div className="flex gap-4 mb-6 items-stretch">
+                <div className="flex gap-4 mb-3 items-stretch">
                   {/* Customer Info */}
                   <div className="flex-1 flex flex-col">
                     <table className="w-full h-full border-collapse border border-gray-300 text-[11px]">
                       <thead>
                         <tr>
-                          <th colSpan={2} className="bg-[#1b6b72] text-white text-center py-1.5 uppercase tracking-widest font-bold text-[14px] rounded-t-sm">
+                          <th colSpan={2} className="bg-[#1b6b72] text-white text-center py-1 uppercase tracking-widest font-bold text-[13px] rounded-t-sm">
                             CUSTOMER INFORMATION
                           </th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-300 [&>tr>td]:p-1 [&>tr>td]:border-x [&>tr>td]:border-gray-300">
+                      <tbody className="divide-y divide-gray-300 [&>tr>td]:p-0.75 [&>tr>td]:px-1.5 [&>tr>td]:border-x [&>tr>td]:border-gray-300">
                         <tr>
                           <td className="w-1/3 font-bold bg-slate-100">Customer Name:</td>
                           <td>{safeCustomer.customerName}</td>
@@ -211,15 +211,15 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
                     <table className="w-full h-full border-collapse border border-gray-300 text-[11px]">
                       <thead>
                         <tr>
-                          <th colSpan={2} className="bg-[#1b6b72] text-white text-center py-1.5 uppercase tracking-widest font-bold text-[14px] rounded-t-sm">
+                          <th colSpan={2} className="bg-[#1b6b72] text-white text-center py-1 uppercase tracking-widest font-bold text-[13px] rounded-t-sm">
                             QUOTATION DETAILS
                           </th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-300 [&>tr>td]:p-1 [&>tr>td]:border-x [&>tr>td]:border-gray-300">
+                      <tbody className="divide-y divide-gray-300 [&>tr>td]:p-0.75 [&>tr>td]:px-1.5 [&>tr>td]:border-x [&>tr>td]:border-gray-300">
                         <tr>
-                          <td className="w-1/3 font-bold bg-slate-100 text-[14.5px] text-[#1a3a5c] py-1.5">No.:</td>
-                          <td className="font-bold text-[14.5px] text-[#1a3a5c] py-1.5">{safeQuoteNo}</td>
+                          <td className="w-1/3 font-bold bg-slate-100 text-[12.5px] text-[#1a3a5c] py-1">No.:</td>
+                          <td className="font-bold text-[12.5px] text-[#1a3a5c] py-1">{safeQuoteNo}</td>
                         </tr>
                         <tr>
                           <td className="font-bold bg-slate-100">Date:</td>
@@ -250,17 +250,17 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
               {/* Items Table for this specific page */}
               <table className="w-full border-collapse border border-gray-300 text-center text-[11px] mb-2">
                 <thead>
-                  <tr className="bg-slate-100 border-b border-gray-300 [&>th]:p-1.5 [&>th]:border-x [&>th]:border-gray-300 [&>th]:font-semibold text-[11px]">
-                    <th className="w-[8%]">Sr. No.</th>
+                  <tr className="bg-slate-100 border-b border-gray-300 [&>th]:py-1 [&>th]:px-1.5 [&>th]:border-x [&>th]:border-gray-300 [&>th]:font-semibold text-[11px]">
+                    <th className="w-[8%] text-center">Sr. No.</th>
                     <th className="text-left w-[26%]">Item Description</th>
-                    <th className="w-[12%]">Picture</th>
-                    <th className="w-[7%]">Qty</th>
-                    <th className="w-[7%]">Unit</th>
+                    <th className="w-[12%] text-center">Picture</th>
+                    <th className="w-[7%] text-center">Qty</th>
+                    <th className="w-[7%] text-center">Unit</th>
                     <th className="text-right w-[18%]">Unit Price (AED)</th>
                     <th className="text-right w-[22%]">Total Amount (AED)</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-300 [&>tr>td]:p-1.5 [&>tr>td]:border-x [&>tr>td]:border-gray-300">
+                <tbody className="divide-y divide-gray-300 [&>tr>td]:py-1 [&>tr>td]:px-1.5 [&>tr>td]:border-x [&>tr>td]:border-gray-300">
                   {items.map((item) => {
                     const globalIndex = safeItems.indexOf(item);
                     const srNo = globalIndex + 1;
@@ -268,7 +268,7 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
 
                     return (
                       <tr key={`item-${globalIndex}`} className="page-break-inside-avoid">
-                        <td>{srNo}</td>
+                        <td className="text-center">{srNo}</td>
                         <td className="text-left">
                           {item.productId !== 'MANUAL' && (
                             <div className="font-bold text-gray-800">{item.product?.sku || ''}</div>
@@ -277,20 +277,20 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
                             {item.product?.name || (item.productId === 'MANUAL' ? 'Manual Item' : '')}
                           </div>
                         </td>
-                        <td className="p-0.5">
+                        <td className="p-0.5 text-center">
                           {imgUrl ? (
                             <img
                               src={imgUrl}
                               alt={item.product?.sku || 'Item'}
-                              className="w-12 h-12 object-contain m-auto"
+                              className="w-10 h-10 object-contain m-auto"
                               referrerPolicy="no-referrer"
                             />
                           ) : (
-                            <div className="w-12 h-12 bg-gray-100 m-auto text-gray-400 text-[9px] flex items-center justify-center">No Img</div>
+                            <div className="w-10 h-10 bg-gray-100 m-auto text-gray-400 text-[9px] flex items-center justify-center">No Img</div>
                           )}
                         </td>
-                        <td>{item.qty}</td>
-                        <td>{item.product?.unit || 'Pcs'}</td>
+                        <td className="text-center">{item.qty}</td>
+                        <td className="text-center">{item.product?.unit || 'Pcs'}</td>
                         <td className="text-right">{formatCurrency(item.unitPrice)}</td>
                         <td className="text-right font-medium">{formatCurrency(item.total)}</td>
                       </tr>
@@ -359,7 +359,7 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
                   </div>
 
                   {/* Terms and Signatures row */}
-                  <div className="flex justify-between items-end mb-2 mt-8">
+                  <div className="flex justify-between items-end mb-2 mt-3">
                     {/* Terms */}
                     <div className="w-[58%]">
                       <h4 className="font-bold text-[10px] text-gray-950 mb-1">Terms & Conditions:</h4>
@@ -380,7 +380,7 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
                         }
                       </ol>
                       
-                      <div className="mt-14 border-t border-black w-48 sm:mx-0"></div>
+                      <div className="mt-10 border-t border-black w-48 sm:mx-0"></div>
                       <div className="mt-1 font-semibold text-[10px]">
                         Customer's Signature
                       </div>

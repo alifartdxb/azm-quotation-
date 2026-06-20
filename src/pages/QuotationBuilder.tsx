@@ -352,8 +352,8 @@ function QuotationBuilder() {
         head: [[{ content: 'QUOTATION DETAILS', colSpan: 2 }]],
         body: [
           [
-            { content: 'No.:', styles: { fontSize: 11, fontStyle: 'bold', textColor: [26, 58, 92] } },
-            { content: safeQuoteNo, styles: { fontSize: 13, fontStyle: 'bold', textColor: [26, 58, 92] } }
+            { content: 'No.:', styles: { fontSize: 9.5, fontStyle: 'bold', textColor: [26, 58, 92] } },
+            { content: safeQuoteNo, styles: { fontSize: 11, fontStyle: 'bold', textColor: [26, 58, 92] } }
           ],
           ['Date:', format(parseDate(quote.createdAt), 'dd MMM yyyy')],
           ['Validity:', `${safeValidityDays} Days`],
@@ -382,7 +382,7 @@ function QuotationBuilder() {
         ];
       });
 
-      const headFinalY = (pdf as any).lastAutoTable.finalY + 15;
+      const headFinalY = (pdf as any).lastAutoTable.finalY + 8;
 
       const bottomMargin = appSettings?.footerImage ? footerHeight + 5 : 20;
 
@@ -391,9 +391,9 @@ function QuotationBuilder() {
         startY: headFinalY,
         margin: { left: 8, right: 8, top: tablesStartY, bottom: bottomMargin },
         theme: 'grid',
-        styles: { valign: 'middle', fontSize: 8.5, cellPadding: 4, font: 'helvetica' },
+        styles: { valign: 'middle', fontSize: 8.5, cellPadding: 3, font: 'helvetica' },
         headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', halign: 'center', lineWidth: 0.1, lineColor: [203, 213, 225] },
-        bodyStyles: { minCellHeight: 18, lineColor: [203, 213, 225], lineWidth: 0.1 },
+        bodyStyles: { minCellHeight: 16, lineColor: [203, 213, 225], lineWidth: 0.1 },
         columnStyles: {
           0: { cellWidth: 15.5, halign: 'center' }, // Sr. No. (8%)
           1: { cellWidth: 50.5, halign: 'left' },   // Item Description (26%)
@@ -413,7 +413,7 @@ function QuotationBuilder() {
             if (item && item.product && item.product.sku) {
               const base64 = preloaded[item.product.sku]; // Use the local preloaded object, not state
               if (base64) {
-                const dim = 16;
+                const dim = 12;
                 const x = data.cell.x + (data.cell.width / 2) - (dim / 2);
                 const y = data.cell.y + (data.cell.height / 2) - (dim / 2);
                 addPdfImage(pdf, base64, x, y, dim, dim);
