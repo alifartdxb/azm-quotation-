@@ -48,6 +48,7 @@ export interface Quotation {
   grandTotal: number;
   status: 'Draft' | 'Pending Approval' | 'Approved' | 'Rejected' | 'Sent' | 'Expired' | 'Converted to Order' | string;
   salesperson: string;
+  preparedBy?: string;
 }
 
 export interface DashboardStats {

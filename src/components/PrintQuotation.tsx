@@ -172,7 +172,7 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
                     <table className="w-full h-full border-collapse border border-gray-300 text-[11px]">
                       <thead>
                         <tr>
-                          <th colSpan={2} className="bg-[#1b6b72] text-white text-center py-1 uppercase tracking-widest font-semibold text-xs rounded-t-sm">
+                          <th colSpan={2} className="bg-[#1b6b72] text-white text-center py-1.5 uppercase tracking-widest font-bold text-[14px] rounded-t-sm">
                             CUSTOMER INFORMATION
                           </th>
                         </tr>
@@ -211,15 +211,15 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
                     <table className="w-full h-full border-collapse border border-gray-300 text-[11px]">
                       <thead>
                         <tr>
-                          <th colSpan={2} className="bg-[#1b6b72] text-white text-center py-1 uppercase tracking-widest font-semibold text-xs rounded-t-sm">
+                          <th colSpan={2} className="bg-[#1b6b72] text-white text-center py-1.5 uppercase tracking-widest font-bold text-[14px] rounded-t-sm">
                             QUOTATION DETAILS
                           </th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-300 [&>tr>td]:p-1 [&>tr>td]:border-x [&>tr>td]:border-gray-300">
                         <tr>
-                          <td className="w-1/3 font-bold bg-slate-100">No.:</td>
-                          <td className="font-bold">{safeQuoteNo}</td>
+                          <td className="w-1/3 font-bold bg-slate-100 text-[14.5px] text-[#1a3a5c] py-1.5">No.:</td>
+                          <td className="font-bold text-[14.5px] text-[#1a3a5c] py-1.5">{safeQuoteNo}</td>
                         </tr>
                         <tr>
                           <td className="font-bold bg-slate-100">Date:</td>
@@ -234,8 +234,12 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
                           <td>{appSettings?.trn || '1002 5994 2900 003'}</td>
                         </tr>
                         <tr>
-                          <td className="font-bold bg-slate-100 rounded-bl-sm">Salesperson:</td>
-                          <td className="rounded-br-sm">{safeSalesperson}</td>
+                          <td className="font-bold bg-slate-100">Salesperson:</td>
+                          <td>{safeSalesperson}</td>
+                        </tr>
+                        <tr>
+                          <td className="font-bold bg-slate-100 rounded-bl-sm">Prepared By:</td>
+                          <td className="rounded-br-sm">{quotation?.preparedBy || 'Rukaiya'}</td>
                         </tr>
                       </tbody>
                     </table>
@@ -247,13 +251,13 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
               <table className="w-full border-collapse border border-gray-300 text-center text-[11px] mb-2">
                 <thead>
                   <tr className="bg-slate-100 border-b border-gray-300 [&>th]:p-1.5 [&>th]:border-x [&>th]:border-gray-300 [&>th]:font-semibold text-[11px]">
-                    <th className="w-[5%]">Sr. No.</th>
-                    <th className="text-left w-[37%]">Item Description</th>
-                    <th className="w-[11%]">Picture</th>
+                    <th className="w-[8%]">Sr. No.</th>
+                    <th className="text-left w-[26%]">Item Description</th>
+                    <th className="w-[12%]">Picture</th>
                     <th className="w-[7%]">Qty</th>
                     <th className="w-[7%]">Unit</th>
-                    <th className="text-right w-[15%]">Unit Price</th>
-                    <th className="text-right w-[18%]">Total Amount</th>
+                    <th className="text-right w-[18%]">Unit Price (AED)</th>
+                    <th className="text-right w-[22%]">Total Amount (AED)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-300 [&>tr>td]:p-1.5 [&>tr>td]:border-x [&>tr>td]:border-gray-300">

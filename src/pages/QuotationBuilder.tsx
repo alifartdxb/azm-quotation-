@@ -38,7 +38,8 @@ function QuotationBuilder() {
     subject: '',
     items: [],
     status: 'Draft',
-    salesperson: 'Ahmed Abdullah'
+    salesperson: 'Ahmed Abdullah',
+    preparedBy: 'Rukaiya'
   });
 
   const printRef = useRef<HTMLDivElement>(null);
@@ -320,7 +321,7 @@ function QuotationBuilder() {
         tableWidth: 95,
         theme: 'grid',
         styles: { fontSize: 8, cellPadding: { top: 3, bottom: 3, left: 4, right: 4 }, font: 'helvetica' },
-        headStyles: { fillColor: [27, 107, 114], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
+        headStyles: { fontSize: 10, fillColor: [27, 107, 114], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
         columnStyles: {
           0: { cellWidth: 35, fontStyle: 'bold', fillColor: [248, 250, 252] },
           1: { cellWidth: 'auto', textColor: [51, 65, 85] }
@@ -343,18 +344,22 @@ function QuotationBuilder() {
         tableWidth: 95,
         theme: 'grid',
         styles: { fontSize: 8, cellPadding: { top: 3, bottom: 3, left: 4, right: 4 }, font: 'helvetica' },
-        headStyles: { fillColor: [27, 107, 114], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
+        headStyles: { fontSize: 10, fillColor: [27, 107, 114], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
         columnStyles: {
           0: { cellWidth: 28, fontStyle: 'bold', fillColor: [248, 250, 252] },
           1: { cellWidth: 'auto', textColor: [51, 65, 85] }
         },
         head: [[{ content: 'QUOTATION DETAILS', colSpan: 2 }]],
         body: [
-          ['No.:', safeQuoteNo],
+          [
+            { content: 'No.:', styles: { fontSize: 11, fontStyle: 'bold', textColor: [26, 58, 92] } },
+            { content: safeQuoteNo, styles: { fontSize: 13, fontStyle: 'bold', textColor: [26, 58, 92] } }
+          ],
           ['Date:', format(parseDate(quote.createdAt), 'dd MMM yyyy')],
           ['Validity:', `${safeValidityDays} Days`],
           ['TRN:', appSettings?.trn || '1002 5994 2900 003'],
-          ['Salesperson:', safeSalesperson]
+          ['Salesperson:', safeSalesperson],
+          ['Prepared By:', quote.preparedBy || 'Rukaiya']
         ]
       });
 
@@ -390,16 +395,16 @@ function QuotationBuilder() {
         headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', halign: 'center', lineWidth: 0.1, lineColor: [203, 213, 225] },
         bodyStyles: { minCellHeight: 18, lineColor: [203, 213, 225], lineWidth: 0.1 },
         columnStyles: {
-          0: { cellWidth: 10, halign: 'center' }, // Item No.
-          1: { cellWidth: 72, halign: 'left' },   // Item Description
-          2: { cellWidth: 20, halign: 'center' }, // Picture
-          3: { cellWidth: 14, halign: 'center' }, // Quantity
-          4: { cellWidth: 14, halign: 'center' }, // Unit
-          5: { cellWidth: 28, halign: 'right' },  // Unit Price
-          6: { cellWidth: 36, halign: 'right' }   // Total Amount
+          0: { cellWidth: 15.5, halign: 'center' }, // Sr. No. (8%)
+          1: { cellWidth: 50.5, halign: 'left' },   // Item Description (26%)
+          2: { cellWidth: 23.3, halign: 'center' }, // Picture (12%)
+          3: { cellWidth: 13.6, halign: 'center' }, // Quantity (7%)
+          4: { cellWidth: 13.6, halign: 'center' }, // Unit (7%)
+          5: { cellWidth: 34.9, halign: 'right' },  // Unit Price (18%)
+          6: { cellWidth: 42.6, halign: 'right' }   // Total Amount (22%)
         },
         head: [
-          ['Sr. No.', 'Item Description', 'Picture', 'Qty', 'Unit', 'Unit Price', 'Total Amount']
+          ['Sr. No.', 'Item Description', 'Picture', 'Qty', 'Unit', 'Unit Price (AED)', 'Total Amount (AED)']
         ],
         body: tableRows,
         didDrawCell: (data: any) => {
@@ -704,6 +709,7 @@ function QuotationBuilder() {
               items: q.items || [],
               status: q.status || 'Draft',
               salesperson: q.salesperson || 'Ahmed Abdullah',
+              preparedBy: q.preparedBy || 'Rukaiya',
               quoteNo: q.quoteNo || '',
               subtotal: q.subtotal || 0,
               discountAmount: q.discountAmount || 0,
@@ -750,6 +756,7 @@ function QuotationBuilder() {
             grandTotal: 0,
             status: 'Draft',
             salesperson: 'Ahmed Abdullah',
+            preparedBy: 'Rukaiya',
             quoteNo: nextQuoteNo,
           });
         }
@@ -1044,7 +1051,7 @@ function QuotationBuilder() {
                  )}
                </div>
                
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                  <div>
                     <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Subject</label>
                     <input type="text" className="w-full border border-slate-200 bg-slate-50 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" 
@@ -1055,6 +1062,16 @@ function QuotationBuilder() {
                     <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Validity (Days)</label>
                     <input type="number" className="w-full border border-slate-200 bg-slate-50 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" 
                       value={quote.validityDays || 10} onChange={e => setQuote({...quote, validityDays: Number(e.target.value)})} />
+                  </div>
+                  <div>
+                     <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Salesperson</label>
+                     <input type="text" className="w-full border border-slate-200 bg-slate-50 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" 
+                       value={quote.salesperson || ''} onChange={e => setQuote({...quote, salesperson: e.target.value})} placeholder="Salesperson" />
+                  </div>
+                  <div>
+                     <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Prepared By</label>
+                     <input type="text" className="w-full border border-slate-200 bg-slate-50 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" 
+                       value={quote.preparedBy || ''} onChange={e => setQuote({...quote, preparedBy: e.target.value})} placeholder="Prepared By" />
                  </div>
                </div>
             </div>
