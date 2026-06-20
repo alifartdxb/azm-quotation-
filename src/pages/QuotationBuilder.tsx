@@ -387,16 +387,16 @@ function QuotationBuilder() {
         margin: { left: 8, right: 8, top: tablesStartY, bottom: bottomMargin },
         theme: 'grid',
         styles: { valign: 'middle', fontSize: 8.5, cellPadding: 4, font: 'helvetica' },
-        headStyles: { fillColor: [248, 250, 252], textColor: [15, 23, 42], fontStyle: 'bold', halign: 'center', lineWidth: 0.1, lineColor: [226, 232, 240] },
-        bodyStyles: { minCellHeight: 16, lineColor: [226, 232, 240], lineWidth: 0.1 },
+        headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', halign: 'center', lineWidth: 0.1, lineColor: [203, 213, 225] },
+        bodyStyles: { minCellHeight: 18, lineColor: [203, 213, 225], lineWidth: 0.1 },
         columnStyles: {
-          0: { cellWidth: 12, halign: 'center' }, // Item No.
+          0: { cellWidth: 10, halign: 'center' }, // Item No.
           1: { cellWidth: 72, halign: 'left' },   // Item Description
           2: { cellWidth: 20, halign: 'center' }, // Picture
-          3: { cellWidth: 16, halign: 'center' }, // Quantity
-          4: { cellWidth: 16, halign: 'center' }, // Unit
-          5: { cellWidth: 32, halign: 'right' },  // Unit Price
-          6: { cellWidth: 32, halign: 'right' }   // Total Amount
+          3: { cellWidth: 14, halign: 'center' }, // Quantity
+          4: { cellWidth: 14, halign: 'center' }, // Unit
+          5: { cellWidth: 28, halign: 'right' },  // Unit Price
+          6: { cellWidth: 36, halign: 'right' }   // Total Amount
         },
         head: [
           ['Sr. No.', 'Item Description', 'Picture', 'Qty', 'Unit', 'Unit Price', 'Total Amount']
@@ -487,13 +487,13 @@ function QuotationBuilder() {
 
       autoTable(pdf, {
         startY: footerStartY,
-        margin: { left: 117 },
-        tableWidth: 85,
+        margin: { left: 138 },
+        tableWidth: 64,
         theme: 'grid',
         styles: { fontSize: 8, cellPadding: 2, font: 'helvetica' },
         columnStyles: {
-          0: { cellWidth: 35, halign: 'left', fontStyle: 'bold', fillColor: [248, 250, 252] },
-          1: { cellWidth: 43, halign: 'right', fontStyle: 'bold' }
+          0: { cellWidth: 28, halign: 'right', fontStyle: 'bold', fillColor: [241, 245, 249], lineColor: [203, 213, 225], lineWidth: 0.1 },
+          1: { cellWidth: 36, halign: 'right', fontStyle: 'bold', lineColor: [203, 213, 225], lineWidth: 0.1 }
         },
         body: totalsBody,
         didParseCell: (data) => {
@@ -542,49 +542,63 @@ function QuotationBuilder() {
         termY += 3.5;
       });
 
-      // Customer's signature and Authorized Signature must be BOTTOM aligned
-      const signatureBaseline = termY + 12;
+      // Calculate stamp dimensions to determine the line position
+      let stampConfigHeight = 16; 
+      let stampConfigWidth = 35;
+      
+      if (appSettings?.companyStamp && appSettings?.showStampInPdf !== false) {
+        try {
+          const props = pdf.getImageProperties(appSettings.companyStamp);
+          stampConfigWidth = 40; // Approx 368px equivalent 
+          stampConfigHeight = (stampConfigWidth / props.width) * props.height;
+        } catch (e) {
+           // fallback
+        }
+      } else {
+         stampConfigHeight = 16; 
+      }
+
+      // Customer's signature and Authorized Signature align lines
+      // Ensure we leave enough space for the stamp ABOVE the line
+      const signatureLineY = termY + stampConfigHeight + 6;
+      const signatureLabelY = signatureLineY + 4;
+
+      // Stamp representation above the line
+      if (appSettings?.companyStamp && appSettings?.showStampInPdf !== false) {
+        const stampX = 155 - (stampConfigWidth / 2); // Center over the 120-190 line
+        const stampY = signatureLineY - stampConfigHeight - 1; // Immediately above the line
+        try {
+          addPdfImage(pdf, appSettings.companyStamp, stampX, stampY, stampConfigWidth, stampConfigHeight);
+        } catch(e) {
+          addPdfImage(pdf, appSettings.companyStamp, 137.5, signatureLineY - 18, 35, 17);
+        }
+      } else {
+        pdf.setDrawColor(15, 68, 114);
+        pdf.setLineWidth(0.2);
+        pdf.circle(155, signatureLineY - 9, 8, 'S');
+        pdf.setFontSize(5);
+        pdf.setTextColor(15, 68, 114);
+        pdf.text("COMPANY STAMP", 155, signatureLineY - 8, { align: 'center', angle: -15 });
+      }
 
       // Customer's signature line
       pdf.setLineWidth(0.25);
       pdf.setDrawColor(15, 23, 42);
-      pdf.line(8, signatureBaseline - 4, 58, signatureBaseline - 4);
+      pdf.line(8, signatureLineY, 58, signatureLineY);
 
+      // Customer's signature label
       pdf.setFontSize(7.5);
       pdf.setFont('helvetica', 'bold');
       pdf.setTextColor(15, 23, 42);
-      pdf.text("Customer's Signature", 8, signatureBaseline);
+      pdf.text("Customer's Signature", 8, signatureLabelY);
 
-      // Authorized signature & stamp on the right
-      pdf.setFontSize(7.5);
-      pdf.setFont('helvetica', 'italic');
-      pdf.setTextColor(51, 65, 85);
-      pdf.text("For ", 120, signatureBaseline - 22);
-      pdf.setFont('helvetica', 'bold');
-      pdf.setTextColor(15, 43, 114);
-      pdf.text("AL ZAHRA AL MALAKIA", 126, signatureBaseline - 22);
-
-      pdf.setFont('helvetica', 'normal');
-      pdf.setTextColor(51, 65, 85);
-      pdf.text("Building Materials Trading LLC", 120, signatureBaseline - 18);
-
-      // Stamp representation
-      pdf.setDrawColor(15, 43, 114);
-      pdf.setLineWidth(0.2);
-      pdf.circle(157, signatureBaseline - 6, 9, 'S');
-      pdf.setFontSize(5);
-      pdf.setTextColor(15, 43, 114);
-      pdf.text("COMPANY STAMP", 157, signatureBaseline - 5, { align: 'center', angle: -15 });
-
-      // Authorized Signature line
+      // Authorized signature line
       pdf.setLineWidth(0.25);
       pdf.setDrawColor(15, 23, 42);
-      pdf.line(120, signatureBaseline - 4, 190, signatureBaseline - 4);
+      pdf.line(120, signatureLineY, 190, signatureLineY);
 
-      pdf.setFontSize(7.5);
-      pdf.setFont('helvetica', 'bold');
-      pdf.setTextColor(15, 23, 42);
-      pdf.text("Authorised Signature", 120, signatureBaseline);
+      // Authorized signature label
+      pdf.text("Authorised Signature", 140, signatureLabelY);
 
       // 4. Multi-pass page counting replacement
       if (typeof pdf.putTotalPages === 'function') {

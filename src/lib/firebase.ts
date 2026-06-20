@@ -70,16 +70,30 @@ export const getAppSettings = async (): Promise<AppSettings> => {
     quotationNextNumber: 735
   };
   
+  const brandingDefaults = {
+    showStampInPdf: true,
+    showStampInPreview: true,
+    showStampOnLastPageOnly: true
+  };
+  
   results.forEach((res, idx) => {
     const name = docs[idx];
     if (res.status === 'fulfilled' && res.value.exists()) {
-      Object.assign(merged, res.value.data());
+      const data = res.value.data();
+      // Apply defaults if fields are missing
+      if (name === 'branding') {
+        if (data.showStampInPdf === undefined) data.showStampInPdf = true;
+        if (data.showStampInPreview === undefined) data.showStampInPreview = true;
+        if (data.showStampOnLastPageOnly === undefined) data.showStampOnLastPageOnly = true;
+      }
+      Object.assign(merged, data);
     } else {
       if (name === 'company') Object.assign(merged, companyDefaults);
       if (name === 'bank') Object.assign(merged, bankDefaults);
       if (name === 'templates') Object.assign(merged, templateDefaults);
       if (name === 'whatsapp') Object.assign(merged, whatsappDefaults);
       if (name === 'quotation') Object.assign(merged, quotationDefaults);
+      if (name === 'branding') Object.assign(merged, brandingDefaults);
     }
   });
   

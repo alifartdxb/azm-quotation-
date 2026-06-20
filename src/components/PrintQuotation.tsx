@@ -247,13 +247,13 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
               <table className="w-full border-collapse border border-gray-300 text-center text-[11px] mb-2">
                 <thead>
                   <tr className="bg-slate-100 border-b border-gray-300 [&>th]:p-1.5 [&>th]:border-x [&>th]:border-gray-300 [&>th]:font-semibold text-[11px]">
-                    <th className="w-[6%]">Sr. No.</th>
-                    <th className="text-left w-[36%]">Item Description</th>
-                    <th className="w-[12%]">Picture</th>
-                    <th className="w-[8%]">Qty</th>
-                    <th className="w-[8%]">Unit</th>
+                    <th className="w-[5%]">Sr. No.</th>
+                    <th className="text-left w-[37%]">Item Description</th>
+                    <th className="w-[11%]">Picture</th>
+                    <th className="w-[7%]">Qty</th>
+                    <th className="w-[7%]">Unit</th>
                     <th className="text-right w-[15%]">Unit Price</th>
-                    <th className="text-right w-[15%]">Total Amount</th>
+                    <th className="text-right w-[18%]">Total Amount</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-300 [&>tr>td]:p-1.5 [&>tr>td]:border-x [&>tr>td]:border-gray-300">
@@ -309,7 +309,7 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
               {isLast && (
                 <div className="w-full">
                   {/* Bank Details & Totals */}
-                  <div className="flex gap-4 mb-2 mt-2 items-stretch">
+                  <div className="flex justify-between items-stretch mb-2 mt-2 gap-4">
                     {/* Bank Details */}
                     <div className="flex-1 text-[10px] leading-tight text-gray-800">
                       <h4 className="font-bold uppercase text-gray-900 mb-1 border-b border-gray-100 pb-0.5">Bank Details:</h4>
@@ -322,32 +322,32 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
                     </div>
 
                     {/* Totals Table */}
-                    <div className="w-[35%]">
-                      <table className="w-full border-collapse border border-gray-300 text-right text-[11px]">
-                        <tbody className="divide-y divide-gray-300 [&>tr>td]:p-1 [&>tr>td]:border-x [&>tr>td]:border-gray-300">
+                    <div className="w-[33%] shrink-0">
+                      <table className="w-full border-collapse border border-gray-300 text-right text-[11px]" style={{ tableLayout: 'fixed' }}>
+                        <tbody className="divide-y divide-gray-300 [&>tr>td]:p-1 [&>tr>td]:border-x [&>tr>td]:border-gray-300 truncate">
                           <tr>
-                            <td className="font-bold w-1/2">Sub Total</td>
-                            <td className="font-bold">{formatCurrency(safeSubtotal)}</td>
+                            <td className="font-bold bg-slate-50 border-r border-gray-300 text-right pr-2" style={{ width: '45.45%' }}>Sub Total</td>
+                            <td className="font-bold pr-1">{formatCurrency(safeSubtotal)}</td>
                           </tr>
                           {!!(discountPercentage && discountPercentage > 0) && (
                             <>
                               <tr>
-                                <td className="text-gray-600">Discount ({discountPercentage}%)</td>
-                                <td className="text-emerald-700 font-medium">-{formatCurrency(discountAmount)}</td>
+                                <td className="text-gray-600 text-right pr-2">Discount ({discountPercentage}%)</td>
+                                <td className="text-emerald-700 font-medium pr-1">-{formatCurrency(discountAmount)}</td>
                               </tr>
                               <tr>
-                                <td className="font-bold">Net Total</td>
-                                <td className="font-bold">{formatCurrency(netTotal)}</td>
+                                <td className="font-bold text-right pr-2">Net Total</td>
+                                <td className="font-bold pr-1">{formatCurrency(netTotal)}</td>
                               </tr>
                             </>
                           )}
                           <tr>
-                            <td className="font-bold bg-slate-100">VAT 5%</td>
-                            <td className="bg-slate-100 font-medium">{formatCurrency(safeVatAmount)}</td>
+                            <td className="font-bold bg-slate-100 text-right pr-2">VAT 5%</td>
+                            <td className="bg-slate-100 font-medium pr-1">{formatCurrency(safeVatAmount)}</td>
                           </tr>
                           <tr>
-                            <td className="font-bold bg-blue-800 text-white">Grand Total</td>
-                            <td className="font-bold bg-slate-100 text-blue-800 text-xs">{formatCurrency(safeGrandTotal)}</td>
+                            <td className="font-bold bg-blue-800 text-white text-right pr-2">Grand Total</td>
+                            <td className="font-bold bg-slate-100 text-blue-800 text-xs pr-1">{formatCurrency(safeGrandTotal)}</td>
                           </tr>
                         </tbody>
                       </table>
@@ -375,23 +375,31 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
                           )
                         }
                       </ol>
-                      <div className="mt-6 border-t border-black w-48 mx-auto pt-1 font-semibold text-center text-[10px] sm:mx-0">
+                      
+                      <div className="mt-14 border-t border-black w-48 sm:mx-0"></div>
+                      <div className="mt-1 font-semibold text-[10px]">
                         Customer's Signature
                       </div>
                     </div>
 
                     {/* Authorized signature & Stamp */}
-                    <div className="w-[38%] text-center flex flex-col justify-end">
-                      <div className="text-[9px] mb-1 leading-tight text-gray-700">
-                        <span className="italic">For</span> <span className="font-bold text-[#1b6b72] text-[10px]">AL ZAHRA AL MALAKIA</span><br />
-                        Building Materials Trading LLC
+                    <div className="w-[45%] flex flex-col items-center justify-end">
+                      <div className="relative min-h-[40px] w-full flex items-center justify-center mb-1">
+                        {appSettings?.companyStamp && appSettings?.showStampInPreview !== false && (!appSettings?.showStampOnLastPageOnly || isLast) ? (
+                          <img 
+                            src={appSettings.companyStamp} 
+                            alt="Company Stamp" 
+                            className="h-auto max-h-16 w-full max-w-[140px] object-contain mix-blend-multiply opacity-90"
+                          />
+                        ) : (
+                          <div className="w-12 h-12 border border-[#1b6b72]/20 rounded-full flex items-center justify-center text-[#1b6b72]/20 rotate-[-15deg] font-semibold text-[6px] opacity-40">
+                            COMPANY STAMP
+                          </div>
+                        )}
                       </div>
-                      <div className="relative h-14 flex items-center justify-center">
-                        <div className="w-16 h-16 border border-[#1b6b72]/20 rounded-full flex items-center justify-center text-[#1b6b72]/20 rotate-[-15deg] font-semibold text-[8px] absolute opacity-40">
-                          COMPANY STAMP
-                        </div>
-                      </div>
-                      <div className="border-t border-black w-48 mx-auto pt-1 font-semibold text-center text-[10px]">
+
+                      <div className="border-t border-black w-48 max-w-[90%]"></div>
+                      <div className="mt-1 font-semibold text-[10px] text-center w-full">
                         Authorised Signature
                       </div>
                     </div>

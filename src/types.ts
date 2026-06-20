@@ -86,4 +86,8 @@ export interface AppSettings {
   quotationNextNumber: number;
   headerImage?: string;
   footerImage?: string;
+  companyStamp?: string;
+  showStampInPdf?: boolean;
+  showStampInPreview?: boolean;
+  showStampOnLastPageOnly?: boolean;
 }

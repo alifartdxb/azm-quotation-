@@ -34,6 +34,10 @@ export default function Settings() {
 
   const [headerImage, setHeaderImage] = useState('');
   const [footerImage, setFooterImage] = useState('');
+  const [companyStamp, setCompanyStamp] = useState('');
+  const [showStampInPdf, setShowStampInPdf] = useState(true);
+  const [showStampInPreview, setShowStampInPreview] = useState(true);
+  const [showStampOnLastPageOnly, setShowStampOnLastPageOnly] = useState(true);
 
   // Counters live values state (Only for Super Admin to manage/view)
   const [counterCurrentNumber, setCounterCurrentNumber] = useState(735);
@@ -73,6 +77,10 @@ export default function Settings() {
 
         setHeaderImage(settings.headerImage || '');
         setFooterImage(settings.footerImage || '');
+        setCompanyStamp(settings.companyStamp || '');
+        setShowStampInPdf(settings.showStampInPdf !== false);
+        setShowStampInPreview(settings.showStampInPreview !== false);
+        setShowStampOnLastPageOnly(settings.showStampOnLastPageOnly !== false);
 
         // Load live counter configuration if Super Admin
         if (isSuperAdmin) {
@@ -124,9 +132,16 @@ export default function Settings() {
         await saveAppSettingsDoc('whatsapp', whatsappData);
         await logActivity('WhatsApp Settings Updated', 'Settings', 'whatsapp', 'Updated default messages template');
       } else if (activeTab === 'branding') {
-        const brandingData = { headerImage, footerImage };
+        const brandingData = { 
+          headerImage, 
+          footerImage,
+          companyStamp,
+          showStampInPdf,
+          showStampInPreview,
+          showStampOnLastPageOnly
+        };
         await saveAppSettingsDoc('branding', brandingData);
-        await logActivity('Branding Settings Updated', 'Settings', 'branding', 'Updated PDF header/footer images');
+        await logActivity('Branding Settings Updated', 'Settings', 'branding', 'Updated PDF header/footer images and stamp');
       } else if (activeTab === 'counters') {
         // Super Admin updating counter properties
         const counterRef = doc(db, 'counters', 'quotationCounter');
@@ -186,7 +201,11 @@ export default function Settings() {
           },
           branding: {
             headerImage: settings.headerImage || '',
-            footerImage: settings.footerImage || ''
+            footerImage: settings.footerImage || '',
+            companyStamp: settings.companyStamp || '',
+            showStampInPdf: settings.showStampInPdf !== false,
+            showStampInPreview: settings.showStampInPreview !== false,
+            showStampOnLastPageOnly: settings.showStampOnLastPageOnly !== false
           }
         },
         counters: {
@@ -278,6 +297,10 @@ export default function Settings() {
         if (s.branding) {
           setHeaderImage(s.branding.headerImage || '');
           setFooterImage(s.branding.footerImage || '');
+          setCompanyStamp(s.branding.companyStamp || '');
+          setShowStampInPdf(s.branding.showStampInPdf !== false);
+          setShowStampInPreview(s.branding.showStampInPreview !== false);
+          setShowStampOnLastPageOnly(s.branding.showStampOnLastPageOnly !== false);
         }
         if (json.counters?.quotationCounter) {
           const c = json.counters.quotationCounter;
@@ -729,6 +752,71 @@ export default function Settings() {
                           <p className="text-xs text-slate-500 mt-1">Recommended width: up to 1200px</p>
                         </div>
                       )}
+                    </div>
+                    
+                    <div className="pt-8 border-t border-slate-100">
+                      <h4 className="font-bold text-slate-800 text-sm mb-4">Company Stamp</h4>
+                      {companyStamp ? (
+                        <div className="relative inline-block w-48 h-48 bg-slate-100 border border-slate-200 rounded-[20px] overflow-hidden group">
+                          <img src={companyStamp} alt="Stamp Preview" className="w-full h-full object-contain p-2" />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <button
+                              type="button"
+                              disabled={isSalesManager}
+                              onClick={() => setCompanyStamp('')}
+                              className="bg-white text-red-600 px-4 py-2 font-bold text-sm rounded-lg shadow-sm"
+                            >
+                              Remove Stamp
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="relative border-2 border-dashed border-slate-300 rounded-[20px] p-8 text-center hover:border-blue-500 hover:bg-blue-50 transition-colors max-w-md">
+                          <input 
+                            type="file" 
+                            accept="image/png, image/jpeg, image/webp"
+                            disabled={isSalesManager}
+                            onChange={(e) => handleImageUpload(e, setCompanyStamp)}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                          />
+                          <ImageIcon className="w-8 h-8 text-slate-400 mx-auto mb-3" />
+                          <p className="text-sm font-semibold text-slate-700">Click or drag image to upload stamp</p>
+                          <p className="text-xs text-slate-500 mt-1">Recommended size: 368x176px, transparent PNG</p>
+                        </div>
+                      )}
+                      
+                      <div className="mt-6 space-y-4">
+                        <label className="flex items-center gap-3">
+                          <input 
+                            type="checkbox" 
+                            disabled={isSalesManager}
+                            checked={showStampInPdf} 
+                            onChange={(e) => setShowStampInPdf(e.target.checked)}
+                            className="w-5 h-5 text-[#1b6b72] rounded border-slate-300 focus:ring-[#1b6b72] disabled:opacity-50"
+                          />
+                          <span className="text-sm font-medium text-slate-700">Show Company Stamp in PDF</span>
+                        </label>
+                        <label className="flex items-center gap-3">
+                          <input 
+                            type="checkbox" 
+                            disabled={isSalesManager}
+                            checked={showStampInPreview} 
+                            onChange={(e) => setShowStampInPreview(e.target.checked)}
+                            className="w-5 h-5 text-[#1b6b72] rounded border-slate-300 focus:ring-[#1b6b72] disabled:opacity-50"
+                          />
+                          <span className="text-sm font-medium text-slate-700">Show Company Stamp in Print Preview</span>
+                        </label>
+                        <label className="flex items-center gap-3">
+                          <input 
+                            type="checkbox" 
+                            disabled={isSalesManager}
+                            checked={showStampOnLastPageOnly} 
+                            onChange={(e) => setShowStampOnLastPageOnly(e.target.checked)}
+                            className="w-5 h-5 text-[#1b6b72] rounded border-slate-300 focus:ring-[#1b6b72] disabled:opacity-50"
+                          />
+                          <span className="text-sm font-medium text-slate-700">Show Company Stamp on Last Page Only</span>
+                        </label>
+                      </div>
                     </div>
                   </div>
                 </div>
