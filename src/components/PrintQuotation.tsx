@@ -100,10 +100,10 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
   };
 
   const safeItems = quotation?.items || [];
-  const safeSubTotal = quotation?.subTotal || 0;
-  const discountRate = quotation?.discountRate || 0;
-  const discountTotal = quotation?.discountTotal || 0;
-  const netTotal = quotation?.netTotal || safeSubTotal;
+  const safeSubtotal = quotation?.subtotal || 0;
+  const discountPercentage = quotation?.discountPercentage || 0;
+  const discountAmount = quotation?.discountAmount || 0;
+  const netTotal = quotation?.netTotal || safeSubtotal;
   const safeVatAmount = quotation?.vatAmount || 0;
   const safeGrandTotal = quotation?.grandTotal || 0;
   const safeQuoteNo = quotation?.quoteNo || 'Draft';
@@ -122,7 +122,7 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
           <div
             key={pageIndex}
             id={`quotation-page-${pageIndex}`}
-            className="block-page bg-white text-black px-[5mm] py-0 w-[210mm] h-[297mm] min-h-[297mm] max-h-[297mm] flex flex-col justify-between shadow-lg relative print:shadow-none print:border-none print:m-0 print:px-[5mm] print:py-0"
+            className="block-page bg-white text-black px-[8mm] py-0 w-[210mm] h-[297mm] min-h-[297mm] max-h-[297mm] flex flex-col justify-between shadow-lg relative print:shadow-none print:border-none print:m-0 print:px-[8mm] print:py-0"
             style={{ boxSizing: 'border-box' }}
           >
             {/* Top Content Area */}
@@ -172,8 +172,8 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
                     <table className="w-full h-full border-collapse border border-gray-300 text-[11px]">
                       <thead>
                         <tr>
-                          <th colSpan={2} className="bg-[#1e8d98] text-white text-center py-1 uppercase tracking-widest font-semibold text-xs rounded-t-lg">
-                            Customer Info
+                          <th colSpan={2} className="bg-[#1b6b72] text-white text-center py-1 uppercase tracking-widest font-semibold text-xs rounded-t-sm">
+                            CUSTOMER INFORMATION
                           </th>
                         </tr>
                       </thead>
@@ -199,8 +199,8 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
                           <td>{safeSubject}</td>
                         </tr>
                         <tr>
-                          <td className="font-bold bg-slate-100 rounded-bl-lg">Customer TRN:</td>
-                          <td className="rounded-br-lg">{safeCustomer.trn}</td>
+                          <td className="font-bold bg-slate-100 rounded-bl-sm">Customer TRN:</td>
+                          <td className="rounded-br-sm">{safeCustomer.trn}</td>
                         </tr>
                       </tbody>
                     </table>
@@ -211,8 +211,8 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
                     <table className="w-full h-full border-collapse border border-gray-300 text-[11px]">
                       <thead>
                         <tr>
-                          <th colSpan={2} className="bg-blue-800 text-white text-center py-1 uppercase tracking-widest font-semibold text-xs rounded-t-lg">
-                            Quotation
+                          <th colSpan={2} className="bg-[#1b6b72] text-white text-center py-1 uppercase tracking-widest font-semibold text-xs rounded-t-sm">
+                            QUOTATION DETAILS
                           </th>
                         </tr>
                       </thead>
@@ -234,8 +234,8 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
                           <td>{appSettings?.trn || '1002 5994 2900 003'}</td>
                         </tr>
                         <tr>
-                          <td className="font-bold bg-slate-100 rounded-bl-lg">Salesperson:</td>
-                          <td className="rounded-br-lg">{safeSalesperson}</td>
+                          <td className="font-bold bg-slate-100 rounded-bl-sm">Salesperson:</td>
+                          <td className="rounded-br-sm">{safeSalesperson}</td>
                         </tr>
                       </tbody>
                     </table>
@@ -263,7 +263,7 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
                     const imgUrl = (preloadedImages && item.product?.sku && preloadedImages[item.product.sku]) || item.product?.image;
 
                     return (
-                      <tr key={item.id} className="page-break-inside-avoid">
+                      <tr key={`item-${globalIndex}`} className="page-break-inside-avoid">
                         <td>{srNo}</td>
                         <td className="text-left">
                           {item.productId !== 'MANUAL' && (
@@ -327,13 +327,13 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
                         <tbody className="divide-y divide-gray-300 [&>tr>td]:p-1 [&>tr>td]:border-x [&>tr>td]:border-gray-300">
                           <tr>
                             <td className="font-bold w-1/2">Sub Total</td>
-                            <td className="font-bold">{formatCurrency(safeSubTotal)}</td>
+                            <td className="font-bold">{formatCurrency(safeSubtotal)}</td>
                           </tr>
-                          {!!(discountRate && discountRate > 0) && (
+                          {!!(discountPercentage && discountPercentage > 0) && (
                             <>
                               <tr>
-                                <td className="text-gray-600">Discount ({discountRate}%)</td>
-                                <td className="text-emerald-700 font-medium">-{formatCurrency(discountTotal)}</td>
+                                <td className="text-gray-600">Discount ({discountPercentage}%)</td>
+                                <td className="text-emerald-700 font-medium">-{formatCurrency(discountAmount)}</td>
                               </tr>
                               <tr>
                                 <td className="font-bold">Net Total</td>
@@ -355,7 +355,7 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
                   </div>
 
                   {/* Terms and Signatures row */}
-                  <div className="flex justify-between items-end mb-2 mt-2">
+                  <div className="flex justify-between items-end mb-2 mt-8">
                     {/* Terms */}
                     <div className="w-[58%]">
                       <h4 className="font-bold text-[10px] text-gray-950 mb-1">Terms & Conditions:</h4>
@@ -375,23 +375,23 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
                           )
                         }
                       </ol>
-                      <div className="mt-4 border-t border-black w-40 pt-1 font-semibold text-center text-[10px]">
+                      <div className="mt-6 border-t border-black w-48 mx-auto pt-1 font-semibold text-center text-[10px] sm:mx-0">
                         Customer's Signature
                       </div>
                     </div>
 
                     {/* Authorized signature & Stamp */}
-                    <div className="w-[38%] text-center">
+                    <div className="w-[38%] text-center flex flex-col justify-end">
                       <div className="text-[9px] mb-1 leading-tight text-gray-700">
-                        <span className="italic">For</span> <span className="font-bold text-blue-800 text-[10px]">AL ZAHRA AL MALAKIA</span><br />
+                        <span className="italic">For</span> <span className="font-bold text-[#1b6b72] text-[10px]">AL ZAHRA AL MALAKIA</span><br />
                         Building Materials Trading LLC
                       </div>
                       <div className="relative h-14 flex items-center justify-center">
-                        <div className="w-16 h-16 border border-blue-800/20 rounded-full flex items-center justify-center text-blue-800/20 rotate-[-15deg] font-semibold text-[8px] absolute opacity-40">
+                        <div className="w-16 h-16 border border-[#1b6b72]/20 rounded-full flex items-center justify-center text-[#1b6b72]/20 rotate-[-15deg] font-semibold text-[8px] absolute opacity-40">
                           COMPANY STAMP
                         </div>
                       </div>
-                      <div className="border-t border-black w-full pt-1 font-semibold text-[10px] mt-1">
+                      <div className="border-t border-black w-48 mx-auto pt-1 font-semibold text-center text-[10px]">
                         Authorised Signature
                       </div>
                     </div>

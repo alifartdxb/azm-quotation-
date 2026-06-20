@@ -162,7 +162,7 @@ function QuotationBuilder() {
       };
 
       const safeItems = quote.items || [];
-      const safeSubTotal = quote.subTotal || 0;
+      const safeSubtotal = quote.subtotal || 0;
       const safeVatAmount = quote.vatAmount || 0;
       const safeGrandTotal = quote.grandTotal || 0;
       const safeQuoteNo = quote.quoteNo || 'Draft';
@@ -196,22 +196,22 @@ function QuotationBuilder() {
       let headerHeight = 28;
       if (appSettings?.headerImage) {
           const props = pdf.getImageProperties(appSettings.headerImage);
-          headerHeight = (200 / props.width) * props.height;
+          headerHeight = (194 / props.width) * props.height;
       }
       
       let footerHeight = 16;
       if (appSettings?.footerImage) {
           const props = pdf.getImageProperties(appSettings.footerImage);
-          footerHeight = (200 / props.width) * props.height;
+          footerHeight = (194 / props.width) * props.height;
       }
 
       const drawHeaderAndFooter = (pageNum: number) => {
         // --- HEADER ---
         if (appSettings?.headerImage) {
-          addPdfImage(pdf, appSettings.headerImage, 5, 0, 200, headerHeight);
+          addPdfImage(pdf, appSettings.headerImage, 8, 0, 194, headerHeight);
         } else {
           pdf.setFillColor(233, 243, 246);
-          pdf.rect(5, 5, 200, 18, 'F'); // Light Cyan Background
+          pdf.rect(8, 5, 194, 18, 'F'); // Light Cyan Background
 
           const companyEn = appSettings?.companyNameEn || 'Al Zahra Al Malakia\nBuilding Materials Trading L.L.C';
           const parts = companyEn.split('\n');
@@ -219,11 +219,11 @@ function QuotationBuilder() {
           pdf.setTextColor(83, 144, 154);
           pdf.setFont('helvetica', 'bold');
           pdf.setFontSize(16);
-          pdf.text(parts[0] || "Al Zahra Al Malakia", 10, 12);
+          pdf.text(parts[0] || "Al Zahra Al Malakia", 12, 12);
           pdf.setTextColor(60, 120, 130);
           pdf.setFont('helvetica', 'normal');
           pdf.setFontSize(9);
-          pdf.text(parts[1] || "Building Materials Trading L.L.C", 10, 18);
+          pdf.text(parts[1] || "Building Materials Trading L.L.C", 12, 18);
 
           // Logo Center
           pdf.setFillColor(255, 255, 255);
@@ -244,11 +244,11 @@ function QuotationBuilder() {
           const companyAr = appSettings?.companyNameAr || 'الزهرة الملكية\nلتجارة مواد البناء ذ.م.م';
           const partsAr = companyAr.split('\n');
           
-          pdf.text(partsAr[0] || "الزهرة الملكية", 200, 12, { align: 'right' });
+          pdf.text(partsAr[0] || "الزهرة الملكية", 192, 12, { align: 'right' });
           pdf.setTextColor(60, 120, 130);
           pdf.setFontSize(9);
           pdf.setFont('helvetica', 'normal');
-          pdf.text(partsAr[1] || "لتجارة مواد البناء ذ.م.م", 200, 18, { align: 'right' });
+          pdf.text(partsAr[1] || "لتجارة مواد البناء ذ.م.م", 192, 18, { align: 'right' });
 
           // Contact Info Line
           pdf.setTextColor(83, 144, 154);
@@ -266,7 +266,7 @@ function QuotationBuilder() {
         const bannerStartY = pageHeight - 12;
         
         if (appSettings?.footerImage) {
-          addPdfImage(pdf, appSettings.footerImage, 5, pageHeight - footerHeight, 200, footerHeight);
+          addPdfImage(pdf, appSettings.footerImage, 8, pageHeight - footerHeight, 194, footerHeight);
           
           pdf.setTextColor(150, 150, 150);
           pdf.setFontSize(8);
@@ -279,9 +279,9 @@ function QuotationBuilder() {
           pdf.setTextColor(30, 58, 138);
 
           const brands = ["VADO", "Jaquar", "ITALIAN STANDARDS", "NOURK", "SANIT", "KLUDI RAK", "SONET"];
-          const spacing = 190 / (brands.length - 1);
+          const spacing = 194 / (brands.length - 1);
           brands.forEach((brand, idx) => {
-            pdf.text(brand, 10 + idx * spacing, pageHeight - 17, { align: idx === 0 ? 'left' : idx === brands.length - 1 ? 'right' : 'center' });
+            pdf.text(brand, 8 + idx * spacing, pageHeight - 17, { align: idx === 0 ? 'left' : idx === brands.length - 1 ? 'right' : 'center' });
           });
 
           // Banner Base
@@ -316,16 +316,16 @@ function QuotationBuilder() {
       // Draw Left Info table
       autoTable(pdf, {
         startY: tablesStartY,
-        margin: { left: 5 },
-        tableWidth: 110,
+        margin: { left: 8 },
+        tableWidth: 95,
         theme: 'grid',
         styles: { fontSize: 8, cellPadding: { top: 3, bottom: 3, left: 4, right: 4 }, font: 'helvetica' },
-        headStyles: { fillColor: [30, 141, 152], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
+        headStyles: { fillColor: [27, 107, 114], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
         columnStyles: {
           0: { cellWidth: 35, fontStyle: 'bold', fillColor: [248, 250, 252] },
           1: { cellWidth: 'auto', textColor: [51, 65, 85] }
         },
-        head: [[{ content: 'CUSTOMER INFO', colSpan: 2 }]],
+        head: [[{ content: 'CUSTOMER INFORMATION', colSpan: 2 }]],
         body: [
           ['Customer Name:', safeCustomer.customerName || '-'],
           ['Contact No.:', safeCustomer.mobile || '-'],
@@ -339,16 +339,16 @@ function QuotationBuilder() {
       // Draw Right Info table
       autoTable(pdf, {
         startY: tablesStartY,
-        margin: { left: 125 },
-        tableWidth: 80,
+        margin: { left: 107 },
+        tableWidth: 95,
         theme: 'grid',
         styles: { fontSize: 8, cellPadding: { top: 3, bottom: 3, left: 4, right: 4 }, font: 'helvetica' },
-        headStyles: { fillColor: [30, 58, 138], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
+        headStyles: { fillColor: [27, 107, 114], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
         columnStyles: {
           0: { cellWidth: 28, fontStyle: 'bold', fillColor: [248, 250, 252] },
           1: { cellWidth: 'auto', textColor: [51, 65, 85] }
         },
-        head: [[{ content: 'QUOTATION', colSpan: 2 }]],
+        head: [[{ content: 'QUOTATION DETAILS', colSpan: 2 }]],
         body: [
           ['No.:', safeQuoteNo],
           ['Date:', format(parseDate(quote.createdAt), 'dd MMM yyyy')],
@@ -384,7 +384,7 @@ function QuotationBuilder() {
       // Draw Main Items table
       autoTable(pdf, {
         startY: headFinalY,
-        margin: { left: 5, right: 5, top: tablesStartY, bottom: bottomMargin },
+        margin: { left: 8, right: 8, top: tablesStartY, bottom: bottomMargin },
         theme: 'grid',
         styles: { valign: 'middle', fontSize: 8.5, cellPadding: 4, font: 'helvetica' },
         headStyles: { fillColor: [248, 250, 252], textColor: [15, 23, 42], fontStyle: 'bold', halign: 'center', lineWidth: 0.1, lineColor: [226, 232, 240] },
@@ -439,47 +439,47 @@ function QuotationBuilder() {
 
       // Draw Bank Details block on the left
       pdf.setFillColor(248, 250, 252);
-      pdf.rect(5, footerStartY, 115, 26, 'F');
+      pdf.rect(8, footerStartY, 105, 28, 'F');
       pdf.setDrawColor(226, 232, 240);
       pdf.setLineWidth(0.25);
-      pdf.rect(5, footerStartY, 115, 26, 'D');
+      pdf.rect(8, footerStartY, 105, 28, 'D');
 
       pdf.setTextColor(15, 23, 42);
       pdf.setFont('helvetica', 'bold');
       pdf.setFontSize(8.5);
-      pdf.text("Bank Details:", 9, footerStartY + 5);
+      pdf.text("Bank Details:", 12, footerStartY + 6);
 
       pdf.setFont('helvetica', 'normal');
       pdf.setFontSize(7.5);
       pdf.setTextColor(51, 65, 85);
-      pdf.text("Bank Name:", 9, footerStartY + 10);
+      pdf.text("Bank Name:", 12, footerStartY + 11);
       pdf.setFont('helvetica', 'bold');
-      pdf.text(appSettings?.bankName || "Dubai Islamic Bank", 32, footerStartY + 10);
+      pdf.text(appSettings?.bankName || "Dubai Islamic Bank", 35, footerStartY + 11);
 
       pdf.setFont('helvetica', 'normal');
-      pdf.text("Account Name:", 9, footerStartY + 14);
+      pdf.text("Account Name:", 12, footerStartY + 15);
       pdf.setFont('helvetica', 'bold');
-      pdf.text(appSettings?.accountName || "AZM Group LLC", 32, footerStartY + 14);
+      pdf.text(appSettings?.accountName || "AZM Group LLC", 35, footerStartY + 15);
 
       pdf.setFont('helvetica', 'normal');
-      pdf.text("Account Number:", 9, footerStartY + 18);
+      pdf.text("Account Number:", 12, footerStartY + 19);
       pdf.setFont('helvetica', 'bold');
-      pdf.text(appSettings?.accountNumber || "0000000000000000", 32, footerStartY + 18);
+      pdf.text(appSettings?.accountNumber || "0000000000000000", 35, footerStartY + 19);
 
       pdf.setFont('helvetica', 'normal');
-      pdf.text("IBAN Number:", 9, footerStartY + 22);
+      pdf.text("IBAN Number:", 12, footerStartY + 23);
       pdf.setFont('helvetica', 'bold');
-      pdf.text(appSettings?.iban || "AE0000000000000000", 32, footerStartY + 22);
+      pdf.text(appSettings?.iban || "AE0000000000000000", 35, footerStartY + 23);
 
       // Draw Totals side-table on the right
       const totalsBody: string[][] = [
-        ['Sub Total', formatCurrency(safeSubTotal)]
+        ['Sub Total', formatCurrency(safeSubtotal)]
       ];
       
-      const discountRate = quote.discountRate || 0;
-      if (discountRate > 0) {
-        totalsBody.push([`Discount (${discountRate}%)`, `-${formatCurrency(quote.discountTotal || 0)}`]);
-        totalsBody.push(['Net Total', formatCurrency(quote.netTotal || safeSubTotal)]);
+      const discountPercentage = quote.discountPercentage || 0;
+      if (discountPercentage > 0) {
+        totalsBody.push([`Discount (${discountPercentage}%)`, `-${formatCurrency(quote.discountAmount || 0)}`]);
+        totalsBody.push(['Net Total', formatCurrency(quote.netTotal || safeSubtotal)]);
       }
       
       totalsBody.push(['VAT 5%', formatCurrency(safeVatAmount)]);
@@ -487,13 +487,13 @@ function QuotationBuilder() {
 
       autoTable(pdf, {
         startY: footerStartY,
-        margin: { left: 125 },
-        tableWidth: 80,
+        margin: { left: 117 },
+        tableWidth: 85,
         theme: 'grid',
         styles: { fontSize: 8, cellPadding: 2, font: 'helvetica' },
         columnStyles: {
           0: { cellWidth: 35, halign: 'left', fontStyle: 'bold', fillColor: [248, 250, 252] },
-          1: { cellWidth: 45, halign: 'right', fontStyle: 'bold' }
+          1: { cellWidth: 43, halign: 'right', fontStyle: 'bold' }
         },
         body: totalsBody,
         didParseCell: (data) => {
@@ -505,19 +505,20 @@ function QuotationBuilder() {
               data.cell.styles.textColor = [30, 58, 138];
               data.cell.styles.fontSize = 8.5;
             }
-          } else if (discountRate > 0 && data.row.index === 1 && data.column.index === 1) {
+          } else if (discountPercentage > 0 && data.row.index === 1 && data.column.index === 1) {
             data.cell.styles.textColor = [5, 150, 105]; // Emerald 600
           }
         }
       });
 
       // Terms & Conditions and Signature Area
-      const termsStartY = footerStartY + 30;
+      // ADDING SPACING: Increased baseline offset to provide a professional gap (approx 35px)
+      const termsStartY = (pdf as any).lastAutoTable.finalY + 12;
 
       pdf.setFontSize(8.5);
       pdf.setTextColor(15, 23, 42); // slate-900
       pdf.setFont('helvetica', 'bold');
-      pdf.text("Terms & Conditions:", 5, termsStartY + 4);
+      pdf.text("Terms & Conditions:", 8, termsStartY + 4);
 
       pdf.setFontSize(7);
       pdf.setFont('helvetica', 'normal');
@@ -537,50 +538,53 @@ function QuotationBuilder() {
 
       let termY = termsStartY + 8;
       terms.forEach(term => {
-        pdf.text(term, 5, termY);
+        pdf.text(term, 8, termY);
         termY += 3.5;
       });
+
+      // Customer's signature and Authorized Signature must be BOTTOM aligned
+      const signatureBaseline = termY + 12;
 
       // Customer's signature line
       pdf.setLineWidth(0.25);
       pdf.setDrawColor(15, 23, 42);
-      pdf.line(5, termY + 8, 55, termY + 8);
+      pdf.line(8, signatureBaseline - 4, 58, signatureBaseline - 4);
 
       pdf.setFontSize(7.5);
       pdf.setFont('helvetica', 'bold');
       pdf.setTextColor(15, 23, 42);
-      pdf.text("Customer's Signature", 5, termY + 12);
+      pdf.text("Customer's Signature", 8, signatureBaseline);
 
       // Authorized signature & stamp on the right
       pdf.setFontSize(7.5);
       pdf.setFont('helvetica', 'italic');
       pdf.setTextColor(51, 65, 85);
-      pdf.text("For ", 125, termsStartY + 4);
+      pdf.text("For ", 120, signatureBaseline - 22);
       pdf.setFont('helvetica', 'bold');
       pdf.setTextColor(15, 43, 114);
-      pdf.text("AL ZAHRA AL MALAKIA", 131, termsStartY + 4);
+      pdf.text("AL ZAHRA AL MALAKIA", 126, signatureBaseline - 22);
 
       pdf.setFont('helvetica', 'normal');
       pdf.setTextColor(51, 65, 85);
-      pdf.text("Building Materials Trading LLC", 125, termsStartY + 8);
+      pdf.text("Building Materials Trading LLC", 120, signatureBaseline - 18);
 
       // Stamp representation
       pdf.setDrawColor(15, 43, 114);
       pdf.setLineWidth(0.2);
-      pdf.circle(162, termsStartY + 18, 9, 'S');
+      pdf.circle(157, signatureBaseline - 6, 9, 'S');
       pdf.setFontSize(5);
       pdf.setTextColor(15, 43, 114);
-      pdf.text("COMPANY STAMP", 162, termsStartY + 19, { align: 'center', angle: -15 });
+      pdf.text("COMPANY STAMP", 157, signatureBaseline - 5, { align: 'center', angle: -15 });
 
       // Authorized Signature line
       pdf.setLineWidth(0.25);
       pdf.setDrawColor(15, 23, 42);
-      pdf.line(125, termsStartY + 30, 195, termsStartY + 30);
+      pdf.line(120, signatureBaseline - 4, 190, signatureBaseline - 4);
 
       pdf.setFontSize(7.5);
       pdf.setFont('helvetica', 'bold');
       pdf.setTextColor(15, 23, 42);
-      pdf.text("Authorised Signature", 125, termsStartY + 34);
+      pdf.text("Authorised Signature", 120, signatureBaseline);
 
       // 4. Multi-pass page counting replacement
       if (typeof pdf.putTotalPages === 'function') {
@@ -687,8 +691,10 @@ function QuotationBuilder() {
               status: q.status || 'Draft',
               salesperson: q.salesperson || 'Ahmed Abdullah',
               quoteNo: q.quoteNo || '',
-              subTotal: q.subTotal || 0,
-              discountTotal: q.discountTotal || 0,
+              subtotal: q.subtotal || 0,
+              discountAmount: q.discountAmount || 0,
+              discountPercentage: q.discountPercentage || 0,
+              netTotal: q.netTotal || 0,
               vatAmount: q.vatAmount || 0,
               grandTotal: q.grandTotal || 0,
               createdAt: q.createdAt
@@ -722,8 +728,10 @@ function QuotationBuilder() {
               discountAmt: 0,
               total: 0
             }],
-            subTotal: 0,
-            discountTotal: 0,
+            subtotal: 0,
+            discountAmount: 0,
+            discountPercentage: 0,
+            netTotal: 0,
             vatAmount: 0,
             grandTotal: 0,
             status: 'Draft',
@@ -828,19 +836,19 @@ function QuotationBuilder() {
     }
   };
 
-  const recalculateTotals = (items: QuoteItem[], discountRate: number = quote.discountRate || 0) => {
-    const subTotal = items.reduce((sum, item) => sum + (item.qty * item.unitPrice), 0);
-    const discountAmount = (subTotal * discountRate) / 100;
-    const netTotal = subTotal - discountAmount;
+  const recalculateTotals = (items: QuoteItem[], discountPercentage: number = quote.discountPercentage || 0) => {
+    const subtotal = items.reduce((sum, item) => sum + (item.qty * item.unitPrice), 0);
+    const discountAmount = (subtotal * discountPercentage) / 100;
+    const netTotal = subtotal - discountAmount;
     const vatAmount = netTotal * 0.05;
     const grandTotal = netTotal + vatAmount;
 
     setQuote(prev => ({
       ...prev,
       items,
-      subTotal: Math.round(subTotal * 100) / 100,
-      discountRate,
-      discountTotal: Math.round(discountAmount * 100) / 100,
+      subtotal: Math.round(subtotal * 100) / 100,
+      discountPercentage,
+      discountAmount: Math.round(discountAmount * 100) / 100,
       netTotal: Math.round(netTotal * 100) / 100,
       vatAmount: Math.round(vatAmount * 100) / 100,
       grandTotal: Math.round(grandTotal * 100) / 100
@@ -1152,7 +1160,7 @@ function QuotationBuilder() {
                    <div className="w-80 bg-slate-50 p-5 rounded-xl space-y-3 border border-slate-200 shadow-sm">
                       <div className="flex justify-between text-sm text-slate-600">
                         <span>Sub Total</span>
-                        <span className="font-mono font-medium text-slate-900">{formatCurrency(quote.subTotal || 0)}</span>
+                        <span className="font-mono font-medium text-slate-900">{formatCurrency(quote.subtotal || 0)}</span>
                       </div>
                       
                       <div className="flex justify-between items-center text-sm text-slate-600">
@@ -1162,20 +1170,20 @@ function QuotationBuilder() {
                           min="0" 
                           max="100" 
                           className="w-20 border border-slate-200 bg-white rounded-md p-1.5 text-sm text-right focus:ring-2 focus:ring-blue-500 outline-none"
-                          value={quote.discountRate || ''}
+                          value={quote.discountPercentage || ''}
                           onChange={e => recalculateTotals(quote.items, Number(e.target.value))}
                         />
                       </div>
 
-                      {!!(quote.discountRate && quote.discountRate > 0) && (
+                      {!!(quote.discountPercentage && quote.discountPercentage > 0) && (
                         <>
                           <div className="flex justify-between text-sm text-emerald-600">
                             <span>Discount Amount</span>
-                            <span className="font-mono font-medium">-{formatCurrency(quote.discountTotal || 0)}</span>
+                            <span className="font-mono font-medium">-{formatCurrency(quote.discountAmount || 0)}</span>
                           </div>
                           <div className="flex justify-between text-sm text-slate-800 font-semibold border-t border-slate-200 pt-2">
                             <span>Net Total</span>
-                            <span className="font-mono">{formatCurrency(quote.netTotal || quote.subTotal || 0)}</span>
+                            <span className="font-mono">{formatCurrency(quote.netTotal || quote.subtotal || 0)}</span>
                           </div>
                         </>
                       )}

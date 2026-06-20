@@ -40,9 +40,9 @@ export interface Quotation {
   validityDays: number;
   subject?: string;
   items: QuoteItem[];
-  subTotal: number;
-  discountRate?: number;
-  discountTotal?: number;
+  subtotal: number;
+  discountPercentage?: number;
+  discountAmount?: number;
   netTotal?: number;
   vatAmount: number;
   grandTotal: number;
