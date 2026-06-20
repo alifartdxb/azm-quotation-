@@ -598,7 +598,7 @@ function QuotationBuilder() {
       pdf.line(120, signatureLineY, 190, signatureLineY);
 
       // Authorized signature label
-      pdf.text("Authorised Signature", 140, signatureLabelY);
+      pdf.text("Authorised Signature", 155, signatureLabelY, { align: 'center' });
 
       // 4. Multi-pass page counting replacement
       if (typeof pdf.putTotalPages === 'function') {
