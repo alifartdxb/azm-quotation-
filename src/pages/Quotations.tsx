@@ -10,6 +10,12 @@ export default function Quotations() {
   const [quotations, setQuotations] = useState<Quotation[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  
+  // Custom Delete Modal States
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [quoteToDelete, setQuoteToDelete] = useState<{ id: string; quoteNo: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     loadQuotations();
@@ -23,16 +29,27 @@ export default function Quotations() {
     });
   };
 
-  const handleDelete = async (id: string, quoteNo: string) => {
-    if (window.confirm(`Are you sure you want to delete quotation ${quoteNo}? This action cannot be undone.`)) {
-      try {
-        await deleteQuotation(id);
-        await logActivity('Quotation Deleted', 'Quotation', id, `Deleted quotation ${quoteNo}`);
-        loadQuotations();
-      } catch (error) {
-        console.error("Error deleting quotation:", error);
-        alert("Failed to delete quotation.");
-      }
+  const openDeleteModal = (id: string, quoteNo: string) => {
+    setQuoteToDelete({ id, quoteNo });
+    setIsDeleteModalOpen(true);
+    setDeleteError(null);
+  };
+
+  const confirmDelete = async () => {
+    if (!quoteToDelete) return;
+    setIsDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteQuotation(quoteToDelete.id);
+      await logActivity('Quotation Deleted', 'Quotation', quoteToDelete.id, `Deleted quotation ${quoteToDelete.quoteNo}`);
+      setIsDeleteModalOpen(false);
+      setQuoteToDelete(null);
+      loadQuotations();
+    } catch (error) {
+      console.error("Error deleting quotation:", error);
+      setDeleteError("Failed to delete quotation. Please try again.");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -76,7 +93,7 @@ export default function Quotations() {
 
         <div className="overflow-x-auto">
           <table className="w-full text-left">
-            <thead className="bg-slate-50 text-[10px] uppercase tracking-wider text-slate-500">
+            <thead className="bg-[#509AA3] text-white text-[11px] uppercase tracking-wider font-semibold">
               <tr>
                 <th className="px-6 py-3">Quote Details</th>
                 <th className="px-6 py-3">Customer</th>
@@ -129,7 +146,7 @@ export default function Quotations() {
                       View / Print
                     </Link>
                     <button
-                      onClick={() => handleDelete(quote.id as string, quote.quoteNo)}
+                      onClick={() => openDeleteModal(quote.id as string, quote.quoteNo)}
                       className="text-slate-400 hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100"
                       title="Delete Quotation"
                     >
@@ -149,6 +166,46 @@ export default function Quotations() {
           </table>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {isDeleteModalOpen && quoteToDelete && (
+        <div className="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden border border-slate-100">
+            <div className="p-6 text-center">
+              <div className="w-12 h-12 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-100">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 mb-2">Delete Quotation</h3>
+              <p className="text-sm text-slate-500 mb-4">
+                Are you sure you want to delete quotation <span className="font-semibold text-slate-800 font-mono">{quoteToDelete.quoteNo}</span>? This action is permanent and cannot be undone.
+              </p>
+              {deleteError && (
+                <div className="p-2.5 mb-4 bg-red-50 border border-red-200 text-red-600 text-xs font-semibold rounded-lg">
+                  {deleteError}
+                </div>
+              )}
+              <div className="flex justify-center gap-3">
+                <button 
+                  onClick={() => {
+                    setIsDeleteModalOpen(false);
+                    setQuoteToDelete(null);
+                  }} 
+                  className="px-4 py-2 border border-slate-200 hover:bg-slate-50 rounded-lg text-sm font-semibold text-slate-600 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button 
+                  disabled={isDeleting}
+                  onClick={confirmDelete} 
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-semibold transition-all shadow-sm active:scale-95 disabled:opacity-50"
+                >
+                  {isDeleting ? "Deleting..." : "Delete Quotation"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

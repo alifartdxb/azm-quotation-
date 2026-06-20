@@ -1,5 +1,5 @@
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Users, Package, FileText, Settings, LogOut, Menu, Search, Plus, Bell, Activity } from "lucide-react";
+import { LayoutDashboard, Users, Package, FileText, Settings, LogOut, Menu, Search, Plus, Bell, Activity, User } from "lucide-react";
 import { useState } from "react";
 import { cn } from "../lib/utils";
 import { useAuth } from "../contexts/AuthContext";
@@ -23,6 +23,7 @@ export default function Layout() {
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { name: 'Quotations', path: '/quotations', icon: FileText },
     { name: 'Products', path: '/products', icon: Package },
+    { name: 'My Profile', path: '/profile', icon: User },
   ];
 
   if (user?.role === 'SUPER_ADMIN' || user?.role === 'SALES_MANAGER') {
@@ -82,16 +83,16 @@ export default function Layout() {
 
         <div className="p-4 border-t border-slate-800 bg-slate-900/50 shrink-0">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-white font-bold">
+            <Link to="/profile" className="flex items-center gap-3 hover:opacity-80 transition-opacity" title="View Profile">
+              <div className="w-10 h-10 rounded-full bg-[#509AA3] flex items-center justify-center text-white font-bold shrink-0">
                 {user?.name?.charAt(0).toUpperCase()}
               </div>
-              <div>
-                <p className="text-xs font-bold text-white">{user?.name}</p>
-                <p className="text-[10px] text-slate-500">{user?.role?.replace('_', ' ')}</p>
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-white truncate">{user?.name}</p>
+                <p className="text-[10px] text-slate-500 truncate">{user?.role?.replace('_', ' ')}</p>
               </div>
-            </div>
-            <button onClick={handleSignOut} className="p-2 text-slate-400 hover:text-white transition-colors" title="Logout">
+            </Link>
+            <button onClick={handleSignOut} className="p-2 text-slate-400 hover:text-white transition-colors shrink-0" title="Logout">
               <LogOut className="w-4 h-4" />
             </button>
           </div>

@@ -7,6 +7,7 @@ import QuotationBuilder from './pages/QuotationBuilder';
 import Login from './pages/Login';
 import Settings from './pages/Settings';
 import AuditLogs from './pages/AuditLogs';
+import Profile from './pages/Profile';
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -26,6 +27,7 @@ export default function App() {
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="products" element={<Products />} />
             <Route path="quotations" element={<Quotations />} />
+            <Route path="profile" element={<Profile />} />
             <Route path="audit-logs" element={
               <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
                 <AuditLogs />
