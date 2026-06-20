@@ -167,7 +167,7 @@ function QuotationBuilder() {
       const safeVatAmount = quote.vatAmount || 0;
       const safeGrandTotal = quote.grandTotal || 0;
       const safeQuoteNo = quote.quoteNo || 'Draft';
-      const safeSalesperson = quote.salesperson || 'Ahmed Abdullah';
+      const safeSalesperson = quote.salesperson || 'Sabeer';
       const safeValidityDays = quote.validityDays || 10;
       const safeSubject = quote.subject || '';
 
@@ -320,15 +320,18 @@ function QuotationBuilder() {
         margin: { left: 8 },
         tableWidth: 95,
         theme: 'grid',
-        styles: { fontSize: 8, cellPadding: { top: 3, bottom: 3, left: 4, right: 4 }, font: 'helvetica' },
-        headStyles: { fontSize: 10, fillColor: [27, 107, 114], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
+        styles: { fontSize: 8.8, cellPadding: { top: 1.5, bottom: 1.5, left: 4, right: 4 }, font: 'helvetica' },
+        headStyles: { fontSize: 11, fillColor: [27, 107, 114], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
         columnStyles: {
           0: { cellWidth: 35, fontStyle: 'bold', fillColor: [248, 250, 252] },
           1: { cellWidth: 'auto', textColor: [51, 65, 85] }
         },
         head: [[{ content: 'CUSTOMER INFORMATION', colSpan: 2 }]],
         body: [
-          ['Customer Name:', safeCustomer.customerName || '-'],
+          [
+            'Customer Name:', 
+            { content: safeCustomer.customerName || '-', styles: { fontStyle: 'bold', textColor: [15, 23, 42] } }
+          ],
           ['Contact No.:', safeCustomer.mobile || '-'],
           ['Email:', safeCustomer.email || '-'],
           ['Address:', safeCustomer.address || '-'],
@@ -343,8 +346,8 @@ function QuotationBuilder() {
         margin: { left: 107 },
         tableWidth: 95,
         theme: 'grid',
-        styles: { fontSize: 8, cellPadding: { top: 3, bottom: 3, left: 4, right: 4 }, font: 'helvetica' },
-        headStyles: { fontSize: 10, fillColor: [27, 107, 114], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
+        styles: { fontSize: 8.8, cellPadding: { top: 1.5, bottom: 1.5, left: 4, right: 4 }, font: 'helvetica' },
+        headStyles: { fontSize: 11, fillColor: [27, 107, 114], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
         columnStyles: {
           0: { cellWidth: 28, fontStyle: 'bold', fillColor: [248, 250, 252] },
           1: { cellWidth: 'auto', textColor: [51, 65, 85] }
@@ -352,8 +355,8 @@ function QuotationBuilder() {
         head: [[{ content: 'QUOTATION DETAILS', colSpan: 2 }]],
         body: [
           [
-            { content: 'No.:', styles: { fontSize: 9.5, fontStyle: 'bold', textColor: [26, 58, 92] } },
-            { content: safeQuoteNo, styles: { fontSize: 11, fontStyle: 'bold', textColor: [26, 58, 92] } }
+            { content: 'No.:', styles: { fontSize: 8.8, fontStyle: 'bold', textColor: [26, 58, 92] } },
+            { content: safeQuoteNo, styles: { fontSize: 10.2, fontStyle: 'bold', textColor: [26, 58, 92] } }
           ],
           ['Date:', format(parseDate(quote.createdAt), 'dd MMM yyyy')],
           ['Validity:', `${safeValidityDays} Days`],
@@ -395,13 +398,13 @@ function QuotationBuilder() {
         headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', halign: 'center', lineWidth: 0.1, lineColor: [203, 213, 225] },
         bodyStyles: { minCellHeight: 16, lineColor: [203, 213, 225], lineWidth: 0.1 },
         columnStyles: {
-          0: { cellWidth: 15.5, halign: 'center' }, // Sr. No. (8%)
-          1: { cellWidth: 50.5, halign: 'left' },   // Item Description (26%)
-          2: { cellWidth: 23.3, halign: 'center' }, // Picture (12%)
-          3: { cellWidth: 13.6, halign: 'center' }, // Quantity (7%)
-          4: { cellWidth: 13.6, halign: 'center' }, // Unit (7%)
-          5: { cellWidth: 34.9, halign: 'right' },  // Unit Price (18%)
-          6: { cellWidth: 42.6, halign: 'right' }   // Total Amount (22%)
+          0: { cellWidth: 13.58, halign: 'center' }, // Sr. No. (7%)
+          1: { cellWidth: 58.20, halign: 'left' },   // Item Description (30%)
+          2: { cellWidth: 23.28, halign: 'center' }, // Picture (12%)
+          3: { cellWidth: 19.40, halign: 'center' }, // Quantity (10%)
+          4: { cellWidth: 19.40, halign: 'center' }, // Unit (10%)
+          5: { cellWidth: 27.16, halign: 'right' },  // Unit Price (14%)
+          6: { cellWidth: 32.98, halign: 'right' }   // Total Amount (17%)
         },
         head: [
           ['Sr. No.', 'Item Description', 'Picture', 'Qty', 'Unit', 'Unit Price (AED)', 'Total Amount (AED)']
@@ -440,14 +443,14 @@ function QuotationBuilder() {
         finalY = tablesStartY;
       }
 
-      const footerStartY = finalY + 8;
+      const footerStartY = finalY + 0.5;
 
       // Draw Bank Details block on the left
       pdf.setFillColor(248, 250, 252);
-      pdf.rect(8, footerStartY, 105, 28, 'F');
+      pdf.rect(8, footerStartY, 123.86, 28, 'F');
       pdf.setDrawColor(226, 232, 240);
       pdf.setLineWidth(0.25);
-      pdf.rect(8, footerStartY, 105, 28, 'D');
+      pdf.rect(8, footerStartY, 123.86, 28, 'D');
 
       pdf.setTextColor(15, 23, 42);
       pdf.setFont('helvetica', 'bold');
@@ -492,13 +495,13 @@ function QuotationBuilder() {
 
       autoTable(pdf, {
         startY: footerStartY,
-        margin: { left: 138 },
-        tableWidth: 64,
+        margin: { left: 141.86 },
+        tableWidth: 60.14,
         theme: 'grid',
         styles: { fontSize: 8, cellPadding: 2, font: 'helvetica' },
         columnStyles: {
-          0: { cellWidth: 28, halign: 'right', fontStyle: 'bold', fillColor: [241, 245, 249], lineColor: [203, 213, 225], lineWidth: 0.1 },
-          1: { cellWidth: 36, halign: 'right', fontStyle: 'bold', lineColor: [203, 213, 225], lineWidth: 0.1 }
+          0: { cellWidth: 27.16, halign: 'right', fontStyle: 'bold', fillColor: [241, 245, 249], lineColor: [203, 213, 225], lineWidth: 0.1 },
+          1: { cellWidth: 32.98, halign: 'right', fontStyle: 'bold', lineColor: [203, 213, 225], lineWidth: 0.1 }
         },
         body: totalsBody,
         didParseCell: (data) => {
@@ -518,7 +521,7 @@ function QuotationBuilder() {
 
       // Terms & Conditions and Signature Area
       // ADDING SPACING: Increased baseline offset to provide a professional gap (approx 35px)
-      const termsStartY = (pdf as any).lastAutoTable.finalY + 12;
+      const termsStartY = (pdf as any).lastAutoTable.finalY + 8.0;
 
       pdf.setFontSize(8.5);
       pdf.setTextColor(15, 23, 42); // slate-900
