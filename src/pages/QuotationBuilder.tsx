@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import type { Quotation, Customer, Product, QuoteItem } from '../types';
 import { useReactToPrint } from 'react-to-print';
 import { PrintQuotation } from '../components/PrintQuotation';
-import { Save, Printer, Plus, Trash2, ArrowLeft, Edit, Download } from 'lucide-react';
+import { Save, Printer, Plus, Trash2, ArrowLeft, Edit, Download, Search, X, Image as ImageIcon, ChevronDown } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { formatCurrency, parseDate, cleanFirestoreData } from '../lib/utils';
 import { format } from 'date-fns';
@@ -1038,19 +1038,10 @@ function QuotationBuilder() {
                <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
                  <h3 className="text-sm font-bold text-slate-800 uppercase tracking-tight">Document Settings</h3>
                  {id && (
-                    <select 
-                      className="border border-slate-200 bg-slate-50 rounded-lg p-1.5 text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none"
-                      value={quote.status}
-                      onChange={e => setQuote({...quote, status: e.target.value})}
-                    >
-                      <option value="Draft">Draft</option>
-                      <option value="Pending Approval">Pending Approval</option>
-                      <option value="Approved">Approved</option>
-                      <option value="Rejected">Rejected</option>
-                      <option value="Sent">Sent</option>
-                      <option value="Expired">Expired</option>
-                      <option value="Converted to Order">Converted to Order</option>
-                    </select>
+                    <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-lg font-mono">
+                      <span>Quotation ID:</span>
+                      <span className="text-[#1B6B72]">{id}</span>
+                    </div>
                  )}
                </div>
                
@@ -1158,20 +1149,25 @@ function QuotationBuilder() {
                                </div>
                              </div>
                            ) : (
-                             <select 
-                               className="w-full border border-slate-200 bg-white rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                               value={item.productId}
-                               onChange={e => updateItem(idx, 'productId', e.target.value)}
-                             >
-                               <option value="">Select product...</option>
-                               {products.map(p => <option key={p.id} value={p.id}>{p.sku} - {p.name}</option>)}
-                             </select>
+                             <SearchableProductSelect
+                                products={products}
+                                selectedId={item.productId}
+                                itemId={item.id}
+                                onChange={(val) => updateItem(idx, 'productId', val)}
+                                formatCurrency={formatCurrency}
+                              />
                            )}
                         </td>
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-2">
-                            <input type="number" min="1" className="w-20 border border-slate-200 bg-white rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" 
-                               value={item.qty} onChange={e => updateItem(idx, 'qty', Number(e.target.value))} />
+                            <input 
+                              id={`qty-input-${item.id}`}
+                              type="number" 
+                              min="1" 
+                              className="w-20 border border-slate-200 bg-white rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" 
+                              value={item.qty} 
+                              onChange={e => updateItem(idx, 'qty', Number(e.target.value))} 
+                            />
                             {item.productId === 'MANUAL' && (
                               <input type="text" placeholder="Unit" className="w-16 border border-slate-200 bg-white rounded-md p-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" 
                                 value={item.product?.unit || ''} onChange={e => updateItem(idx, 'manualUnit', e.target.value)} />
@@ -1257,6 +1253,266 @@ function QuotationBuilder() {
           <div className="shadow-2xl">
             <PrintQuotation ref={printRef} quotation={quote as Quotation} preloadedImages={preloadedImages} appSettings={appSettings} />
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface SearchableProductSelectProps {
+  products: Product[];
+  selectedId: string;
+  itemId: string;
+  onChange: (value: string) => void;
+  formatCurrency: (value: number) => string;
+}
+
+function SearchableProductSelect({
+  products,
+  selectedId,
+  itemId,
+  onChange,
+  formatCurrency
+}: SearchableProductSelectProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchText, setSearchText] = useState('');
+  const [focusedIndex, setFocusedIndex] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const selectedProduct = products.find(p => p.id === selectedId);
+
+  // Filter products using premium POS match scoring
+  const getFilteredItems = () => {
+    const q = searchText.trim().toLowerCase();
+    if (!q) {
+      // Return first 100 products for snappiness
+      return products.slice(0, 100);
+    }
+
+    const aliasMap: Record<string, string> = {
+      'va': 'vado',
+      'ja': 'jaquar',
+      'it': 'italian standards',
+      'kl': 'kludi rak',
+      'no': 'nourk',
+      'so': 'sonet'
+    };
+
+    const aliasTarget = aliasMap[q];
+
+    return products
+      .map(p => {
+        let score = 0;
+        const name = (p.name || '').toLowerCase();
+        const sku = (p.sku || '').toLowerCase();
+        const brand = (p.brand || '').toLowerCase();
+
+        // Exact shortcuts matching
+        if (aliasTarget) {
+          if (brand === aliasTarget) score += 150;
+          else if (brand.startsWith(aliasTarget) || brand.includes(aliasTarget)) score += 100;
+          else if (name.includes(aliasTarget)) score += 80;
+        }
+
+        // SKU matches
+        if (sku === q) score += 200;
+        else if (sku.startsWith(q)) score += 150;
+        else if (sku.includes(q)) score += 80;
+
+        // Name matches
+        if (name === q) score += 125;
+        else if (name.startsWith(q)) score += 90;
+        else if (name.includes(q)) score += 50;
+
+        // Brand matches
+        if (brand === q) score += 120;
+        else if (brand.startsWith(q)) score += 75;
+        else if (brand.includes(q)) score += 40;
+
+        // Initials matching (e.g. "vss" for "vado set shower set")
+        const words = name.split(/\s+/).filter(Boolean);
+        if (words.length > 1) {
+          const initials = words.map(w => w[0]).join('');
+          if (initials === q || initials.startsWith(q)) {
+            score += 70;
+          }
+        }
+
+        return { product: p, score };
+      })
+      .filter(item => item.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .map(item => item.product);
+  };
+
+  const filtered = getFilteredItems();
+
+  // Handle clicking outside to auto-dismiss
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Update selection
+  const handleSelect = (p: Product) => {
+    onChange(p.id);
+    setSearchText('');
+    setIsOpen(false);
+    
+    // Auto focus quantity input in current row
+    setTimeout(() => {
+      const qInput = document.getElementById(`qty-input-${itemId}`) as HTMLInputElement | null;
+      if (qInput) {
+        qInput.focus();
+        qInput.select();
+      }
+    }, 120);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!isOpen) {
+      if (e.key === 'ArrowDown' || e.key === 'Enter') {
+        setIsOpen(true);
+        e.preventDefault();
+      }
+      return;
+    }
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setFocusedIndex(prev => (prev + 1) % Math.max(1, filtered.length));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setFocusedIndex(prev => (prev - 1 + filtered.length) % Math.max(1, filtered.length));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (filtered[focusedIndex]) {
+        handleSelect(filtered[focusedIndex]);
+      }
+    } else if (e.key === 'Escape') {
+      setIsOpen(false);
+    }
+  };
+
+  // Keep focused item in view
+  const listRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (isOpen && listRef.current) {
+      const activeEl = listRef.current.children[focusedIndex] as HTMLElement | null;
+      if (activeEl) {
+        activeEl.scrollIntoView({
+          block: 'nearest',
+          behavior: 'auto'
+        });
+      }
+    }
+  }, [focusedIndex, isOpen]);
+
+  const highlightMatches = (text: string, query: string) => {
+    if (!query || !query.trim()) return <span>{text}</span>;
+    const cleanQuery = query.trim().replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+    const parts = text.split(new RegExp(`(${cleanQuery})`, 'gi'));
+    return (
+      <span>
+        {parts.map((p, i) => 
+          p.toLowerCase() === query.trim().toLowerCase() ? (
+            <mark key={i} className="bg-amber-100 text-amber-950 font-semibold px-0.5 rounded">{p}</mark>
+          ) : (
+            p
+          )
+        )}
+      </span>
+    );
+  };
+
+  const getInputValue = () => {
+    if (isOpen) return searchText;
+    return selectedProduct 
+      ? `${selectedProduct.sku} | ${selectedProduct.name} | ${formatCurrency(selectedProduct.price)}`
+      : '';
+  };
+
+  const getPlaceholder = () => {
+    return selectedProduct 
+      ? `${selectedProduct.sku} | ${selectedProduct.name} | ${formatCurrency(selectedProduct.price)} / ${selectedProduct.unit}`
+      : 'Search SKU, Brand, Name, Initials...';
+  };
+
+  return (
+    <div ref={containerRef} className="relative w-full">
+      <div className="relative flex items-center">
+        <input
+          ref={inputRef}
+          type="text"
+          className="w-full border border-slate-200 bg-white rounded-md p-2 pr-8 text-sm focus:ring-2 focus:ring-[#1B6B72] outline-none shadow-sm placeholder:text-slate-400 font-medium cursor-pointer"
+          placeholder={getPlaceholder()}
+          value={getInputValue()}
+          onChange={(e) => {
+            setSearchText(e.target.value);
+            setIsOpen(true);
+            setFocusedIndex(0);
+          }}
+          onFocus={() => {
+            setIsOpen(true);
+            setFocusedIndex(0);
+          }}
+          onKeyDown={handleKeyDown}
+        />
+        <div className="absolute right-2.5 text-slate-400 pointer-events-none">
+          <ChevronDown className="w-4 h-4" />
+        </div>
+      </div>
+
+      {isOpen && (
+        <div className="absolute left-0 right-0 mt-1.5 bg-white border border-slate-200 rounded-lg shadow-xl z-50 overflow-hidden divide-y divide-slate-100 max-h-64 overflow-y-auto" ref={listRef}>
+          {filtered.length > 0 ? (
+            filtered.map((p, idx) => {
+              const isFocused = idx === focusedIndex;
+              return (
+                <div
+                  key={p.id}
+                  className={`p-2.5 flex items-center justify-between gap-3 cursor-pointer transition-colors ${
+                    isFocused ? 'bg-[#1B6B72]/10 border-l-4 border-l-[#1B6B72]' : 'hover:bg-slate-50'
+                  }`}
+                  onClick={() => handleSelect(p)}
+                  onMouseEnter={() => setFocusedIndex(idx)}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    {p.image ? (
+                      <img src={p.image} className="w-8 h-8 object-cover rounded border border-slate-100 bg-white shrink-0" alt="" />
+                    ) : (
+                      <div className="w-8 h-8 bg-slate-50 rounded border border-slate-100 flex items-center justify-center text-slate-400 shrink-0">
+                        <ImageIcon className="w-3.5 h-3.5" />
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] font-bold text-blue-600 font-mono leading-none">{p.sku}</span>
+                        <span className="text-[9px] text-slate-400 font-semibold uppercase">{p.brand}</span>
+                      </div>
+                      <p className="text-xs font-semibold text-slate-800 truncate leading-snug mt-0.5">
+                        {highlightMatches(p.name, searchText)}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-xs font-bold text-slate-900 font-mono">{formatCurrency(p.price)}</p>
+                    <p className="text-[9px] text-slate-400 font-medium">/{p.unit}</p>
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <div className="p-4 text-center text-slate-500 text-xs">
+              No matching products found. Try typing different initials or keywords.
+            </div>
+          )}
         </div>
       )}
     </div>

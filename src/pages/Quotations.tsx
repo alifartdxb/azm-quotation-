@@ -4,7 +4,7 @@ import { Plus, Search, FileText, Trash2 } from 'lucide-react';
 import { formatCurrency, cn, parseDate } from '../lib/utils';
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
-import { getQuotations, deleteQuotation, logActivity } from '../lib/firebase';
+import { getQuotations, deleteQuotation, logActivity, updateQuotationStatus } from '../lib/firebase';
 
 export default function Quotations() {
   const [quotations, setQuotations] = useState<Quotation[]>([]);
@@ -16,6 +16,24 @@ export default function Quotations() {
   const [quoteToDelete, setQuoteToDelete] = useState<{ id: string; quoteNo: string } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  
+  // Status edit states
+  const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
+
+  const handleStatusChange = async (id: string, quoteNo: string, oldStatus: string, newStatus: string) => {
+    if (oldStatus === newStatus) return;
+    setUpdatingStatusId(id);
+    try {
+      await updateQuotationStatus(id, newStatus);
+      await logActivity('Quotation Status Changed', 'Quotation', id, `Changed status of ${quoteNo} from ${oldStatus} to ${newStatus}`);
+      setQuotations(prev => prev.map(q => q.id === id ? { ...q, status: newStatus } : q));
+    } catch (error) {
+      console.error("Error updating quotation status:", error);
+      alert("Failed to update status. Please try again.");
+    } finally {
+      setUpdatingStatusId(null);
+    }
+  };
 
   useEffect(() => {
     loadQuotations();
@@ -128,18 +146,37 @@ export default function Quotations() {
                     <span className="font-mono text-sm font-medium text-slate-900">{formatCurrency(quote.grandTotal)}</span>
                   </td>
                   <td className="px-6 py-4 text-center">
-                    <span className={cn(
-                      "px-2.5 py-1 rounded-full text-[10px] font-bold inline-block",
-                      quote.status === 'Draft' ? "bg-slate-100 text-slate-700" :
-                      quote.status === 'Pending Approval' ? "bg-amber-100 text-amber-700" :
-                      quote.status === 'Approved' ? "bg-emerald-100 text-emerald-700" :
-                      quote.status === 'Rejected' ? "bg-red-100 text-red-700" :
-                      quote.status === 'Sent' ? "bg-blue-100 text-blue-700" :
-                      quote.status === 'Converted to Order' ? "bg-purple-100 text-purple-700" :
-                      "bg-slate-100 text-slate-700"
-                    )}>
-                      {quote.status.toUpperCase()}
-                    </span>
+                    <span className="sr-only">Status</span>
+                    <div className="relative inline-block text-left w-36">
+                      <select
+                        value={quote.status}
+                        disabled={updatingStatusId === quote.id}
+                        onChange={(e) => handleStatusChange(quote.id as string, quote.quoteNo, quote.status, e.target.value)}
+                        className={cn(
+                          "w-full px-2.5 py-1 pr-7 rounded-lg text-[10px] font-bold uppercase tracking-wider border-none ring-0 outline-none cursor-pointer focus:ring-1 focus:ring-[#1B6B72]/30 transition-all appearance-none bg-[right_0.5rem_center] bg-no-repeat text-center",
+                          updatingStatusId === quote.id ? "opacity-50 cursor-not-allowed" : "",
+                          quote.status === 'Draft' ? "bg-slate-100 text-slate-700" :
+                          quote.status === 'Pending Approval' ? "bg-amber-100 text-amber-700" :
+                          quote.status === 'Approved' ? "bg-emerald-100 text-emerald-700 font-bold" :
+                          quote.status === 'Rejected' ? "bg-red-100 text-red-700" :
+                          quote.status === 'Sent' ? "bg-blue-100 text-blue-700" :
+                          quote.status === 'Converted to Order' ? "bg-purple-100 text-purple-700" :
+                          "bg-slate-100 text-slate-700"
+                        )}
+                        style={{
+                          backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233d3d3d' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`,
+                          backgroundSize: '10px',
+                        }}
+                      >
+                        <option value="Draft" className="bg-white text-slate-700 font-semibold text-xs normal-case">Draft</option>
+                        <option value="Sent" className="bg-white text-blue-700 font-semibold text-xs normal-case">Sent</option>
+                        <option value="Pending Approval" className="bg-white text-amber-700 font-semibold text-xs normal-case">Pending Approval</option>
+                        <option value="Approved" className="bg-white text-emerald-700 font-semibold text-xs normal-case">Approved</option>
+                        <option value="Rejected" className="bg-white text-red-700 font-semibold text-xs normal-case">Rejected</option>
+                        <option value="Converted to Order" className="bg-white text-purple-700 font-semibold text-xs normal-case">Converted to Order</option>
+                        <option value="Expired" className="bg-white text-rose-700 font-semibold text-xs normal-case">Expired</option>
+                      </select>
+                    </div>
                   </td>
                   <td className="px-6 py-4 text-right space-x-3">
                     <Link to={`/quotations/${quote.id}`} className="text-[11px] text-blue-600 font-semibold hover:underline opacity-0 group-hover:opacity-100 transition-opacity">

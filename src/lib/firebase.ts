@@ -174,6 +174,10 @@ export const deleteQuotation = async (id: string): Promise<void> => {
   await deleteDoc(doc(db, 'quotations', id));
 };
 
+export const updateQuotationStatus = async (id: string, status: string): Promise<void> => {
+  await updateDoc(doc(db, 'quotations', id), { status });
+};
+
 export const getQuotation = async (id: string): Promise<Quotation | null> => {
   const docRef = doc(db, 'quotations', id);
   const docSnap = await getDoc(docRef);

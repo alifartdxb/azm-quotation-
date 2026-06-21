@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import type { Product } from '../types';
-import { Plus, Search, Image as ImageIcon, Upload, FileSpreadsheet, X, Save, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Search, Image as ImageIcon, Upload, FileSpreadsheet, X, Save, Pencil, Trash2, CheckCircle, ArrowUpDown } from 'lucide-react';
 import { formatCurrency } from '../lib/utils';
 import { getProducts, db, logActivity } from '../lib/firebase';
 import { collection, writeBatch, doc, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
@@ -13,6 +13,18 @@ export default function Products() {
   const [loading, setLoading] = useState(true);
   const [isImporting, setIsImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Sorting Mode State
+  const [sortBy, setSortBy] = useState<'sku-asc' | 'sku-desc' | 'name-asc' | 'name-desc'>('sku-asc');
+
+  // Multi-Selection State
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  // Bulk Delete States
+  const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
+  const [isDeletingBulk, setIsDeletingBulk] = useState(false);
+  const [bulkDeleteError, setBulkDeleteError] = useState<string | null>(null);
+  const [successBanner, setSuccessBanner] = useState<string | null>(null);
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -28,6 +40,16 @@ export default function Products() {
   useEffect(() => {
     loadProducts();
   }, []);
+
+  // Auto-dismiss success banner
+  useEffect(() => {
+    if (successBanner) {
+      const timer = setTimeout(() => {
+        setSuccessBanner(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [successBanner]);
 
   const loadProducts = () => {
     setLoading(true);
@@ -81,7 +103,7 @@ export default function Products() {
           price: parseFloat(row.price || row.Price || row.SellingPrice || '0'),
           unit: row.unit || row.Unit || 'Pcs',
           category: row.category || row.Category || 'General',
-          image: row.image || row.Image || 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&q=80&w=200&h=200'
+          image: row.image || row.Image || 'https://upload.wikimedia.org/wikipedia/commons/f/fc/No_picture_available.png'
         };
 
         const newDocRef = doc(collection(db, 'products'));
@@ -197,14 +219,54 @@ export default function Products() {
     try {
       await deleteDoc(doc(db, 'products', productToDelete.id));
       await logActivity('Delete Product', 'System', productToDelete.id, `Deleted product: ${productToDelete.name}`);
+      
+      // Remove deleted item from potential multi-selection set
+      setSelectedIds(prev => {
+        const next = new Set(prev);
+        next.delete(productToDelete.id);
+        return next;
+      });
+
       setIsDeleteModalOpen(false);
       setProductToDelete(null);
+      setSuccessBanner(`Successfully deleted product.`);
       loadProducts();
     } catch (error) {
       console.error(error);
       alert("Failed to delete product from database.");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const confirmBulkDelete = async () => {
+    setIsDeletingBulk(true);
+    setBulkDeleteError(null);
+    try {
+      const batch = writeBatch(db);
+      const selectedIdsArray = Array.from(selectedIds);
+      
+      selectedIdsArray.forEach(id => {
+        batch.delete(doc(db, 'products', id));
+      });
+      
+      await batch.commit();
+
+      // Log bulk delete event
+      await logActivity('Bulk Delete Products', 'System', 'Multiple', `Deleted ${selectedIdsArray.length} products dynamically.`);
+
+      // Product images are cached inline as base64/URLs inside Firestore documents. 
+      // Deleting product documents naturally cleans up these fields without any secondary storage requirements.
+
+      setSuccessBanner(`Successfully deleted ${selectedIdsArray.length} products.`);
+      setSelectedIds(new Set());
+      setIsBulkDeleteModalOpen(false);
+      loadProducts();
+    } catch (error: any) {
+      console.error("Bulk deletion failed:", error);
+      setBulkDeleteError("Failed to delete selected products. Please try again.");
+    } finally {
+      setIsDeletingBulk(false);
     }
   };
 
@@ -218,8 +280,37 @@ export default function Products() {
     );
   });
 
+  // Automatically sort by selected option using natural sort for SKU and case-insensitive matching for name
+  const sortedAndFiltered = [...filtered].sort((a, b) => {
+    if (sortBy === 'sku-asc' || sortBy === 'sku-desc') {
+      const skuA = (a.sku || '').trim();
+      const skuB = (b.sku || '').trim();
+      // Natural sort handles numbers like SKU-2 before SKU-10 beautifully!
+      const comp = skuA.localeCompare(skuB, undefined, { numeric: true, sensitivity: 'base' });
+      return sortBy === 'sku-asc' ? comp : -comp;
+    } else {
+      const nameA = (a.name || '').trim();
+      const nameB = (b.name || '').trim();
+      const comp = nameA.localeCompare(nameB, undefined, { sensitivity: 'base' });
+      return sortBy === 'name-asc' ? comp : -comp;
+    }
+  });
+
   return (
     <div className="space-y-6">
+      {/* Success Notification Banner */}
+      {successBanner && (
+        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-4 rounded-xl text-sm font-semibold flex items-center justify-between shadow-sm animate-fade-in shrink-0">
+          <div className="flex items-center gap-2.5">
+            <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" />
+            <span>{successBanner}</span>
+          </div>
+          <button onClick={() => setSuccessBanner(null)} className="text-[#509AA3] hover:text-[#3f7a81] transition-colors p-1">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Product Catalog</h1>
@@ -370,27 +461,99 @@ export default function Products() {
       )}
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
-        <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+        <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <h3 className="font-bold text-slate-800">All Products</h3>
-          <div className="relative w-64">
-            <Search className="absolute left-3 top-2 text-slate-400 w-4 h-4" />
-            <input 
-              type="text" 
-              placeholder="Search by SKU or name..." 
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-1.5 bg-slate-100 border-none rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-            />
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Sorting Controls */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Sort:</span>
+              <select
+                value={sortBy}
+                onChange={(e: any) => setSortBy(e.target.value)}
+                className="bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold px-3 py-2 text-slate-700 outline-none focus:ring-2 focus:ring-[#509AA3] cursor-pointer"
+              >
+                <option value="sku-asc">SKU ↑ (Default)</option>
+                <option value="sku-desc">SKU ↓</option>
+                <option value="name-asc">Product Name A–Z</option>
+                <option value="name-desc">Product Name Z–A</option>
+              </select>
+            </div>
+
+            {/* Search Input Filter */}
+            <div className="relative w-64">
+              <Search className="absolute left-3 top-2.5 text-slate-400 w-4 h-4" />
+              <input 
+                type="text" 
+                placeholder="Search by SKU or name..." 
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-[#509AA3] outline-none"
+              />
+            </div>
           </div>
         </div>
+
+        {/* Multi-Select Floating Bulk Action Strip */}
+        {selectedIds.size > 0 && (
+          <div className="bg-amber-50/80 border-b border-amber-200 px-6 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in">
+            <div className="flex items-center gap-2">
+              <span className="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-bold">
+                {selectedIds.size} Selected
+              </span>
+              <p className="text-sm text-slate-600">
+                You have selected <span className="font-semibold text-slate-800">{selectedIds.size}</span> products for bulk deletion
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setSelectedIds(new Set())}
+                className="text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors"
+              >
+                Clear Selection
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setBulkDeleteError(null);
+                  setIsBulkDeleteModalOpen(true);
+                }}
+                className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm active:scale-95"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Delete Selected ({selectedIds.size})</span>
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="overflow-x-auto">
           {loading ? (
              <div className="p-8 text-center text-slate-500">Loading products...</div>
           ) : (
             <table className="w-full text-left">
-              <thead className="bg-[#509AA3] text-white text-[11px] uppercase tracking-wider font-semibold">
+              <thead className="bg-[#509AA3] text-white text-[11px] uppercase tracking-wider font-semibold border-b border-slate-100">
                 <tr>
+                  <th className="px-6 py-3 w-12 text-center">
+                    <input 
+                      type="checkbox" 
+                      className="rounded border-slate-300 text-[#509AA3] focus:ring-[#509AA3] h-4 w-4 cursor-pointer"
+                      checked={sortedAndFiltered.length > 0 && sortedAndFiltered.every(p => selectedIds.has(p.id))}
+                      onChange={() => {
+                        const visibleIds = sortedAndFiltered.map(p => p.id);
+                        const allVisibleSelected = visibleIds.every(id => selectedIds.has(id));
+                        setSelectedIds(prev => {
+                          const next = new Set(prev);
+                          if (allVisibleSelected) {
+                            visibleIds.forEach(id => next.delete(id));
+                          } else {
+                            visibleIds.forEach(id => next.add(id));
+                          }
+                          return next;
+                        });
+                      }}
+                    />
+                  </th>
                   <th className="px-6 py-3 w-24">Image</th>
                   <th className="px-6 py-3">SKU / Product Info</th>
                   <th className="px-6 py-3">Category</th>
@@ -399,65 +562,157 @@ export default function Products() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filtered.map(product => (
-                  <tr key={product.id} className="hover:bg-slate-50 transition-colors group">
-                    <td className="px-6 py-4">
-                      {product.image ? (
-                        <img src={product.image} alt={product.name} className="w-12 h-12 object-cover rounded border border-slate-200" />
-                      ) : (
-                        <div className="w-12 h-12 bg-slate-100 rounded border border-slate-200 flex items-center justify-center text-slate-400">
-                          <ImageIcon className="w-4 h-4" />
+                {sortedAndFiltered.map(product => {
+                  const isSelected = selectedIds.has(product.id);
+                  return (
+                    <tr 
+                      key={product.id} 
+                      className={`hover:bg-slate-50 transition-colors group ${isSelected ? 'bg-slate-50/70 border-l-2 border-l-[#509AA3]' : ''}`}
+                    >
+                      <td className="px-6 py-4 text-center">
+                        <input 
+                          type="checkbox"
+                          className="rounded border-slate-300 text-[#509AA3] focus:ring-[#509AA3] h-4 w-4 cursor-pointer"
+                          checked={isSelected}
+                          onChange={() => {
+                            setSelectedIds(prev => {
+                              const next = new Set(prev);
+                              if (next.has(product.id)) {
+                                next.delete(product.id);
+                              } else {
+                                next.add(product.id);
+                              }
+                              return next;
+                            });
+                          }}
+                        />
+                      </td>
+                      <td className="px-6 py-4 animate-fade-in">
+                        {product.image ? (
+                          <img src={product.image} alt={product.name} className="w-12 h-12 object-cover rounded border border-slate-200" />
+                        ) : (
+                          <div className="w-12 h-12 bg-slate-100 rounded border border-slate-200 flex items-center justify-center text-slate-400">
+                            <ImageIcon className="w-4 h-4" />
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4">
+                        <p className="font-mono text-xs text-blue-600 font-bold mb-0.5">{product.sku}</p>
+                        <p className="text-sm font-semibold text-slate-800 leading-tight">{product.name}</p>
+                        <p className="text-[11px] text-slate-500 mt-0.5">Brand: {product.brand}</p>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider">
+                          {product.category}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <span className="font-mono text-sm font-medium text-slate-900">{formatCurrency(product.price)}</span>
+                        <span className="text-slate-400 font-normal text-xs ml-1">/ {product.unit}</span>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <button 
+                            type="button"
+                            onClick={() => handleEditProduct(product)}
+                            className="flex items-center gap-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition shadow-sm active:scale-95"
+                            title="Edit product"
+                          >
+                            <Pencil className="w-3.5 h-3.5 text-blue-600" />
+                            <span>Edit</span>
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={() => handleDeleteProduct(product.id, product.name)}
+                            className="flex items-center gap-1.5 bg-red-50 hover:bg-red-100 border border-red-100 text-red-600 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition shadow-sm active:scale-95"
+                            title="Delete product"
+                          >
+                            <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                            <span>Delete</span>
+                          </button>
                         </div>
-                      )}
-                    </td>
-                    <td className="px-6 py-4">
-                      <p className="font-mono text-xs text-blue-600 font-bold mb-0.5">{product.sku}</p>
-                      <p className="text-sm font-semibold text-slate-800 leading-tight">{product.name}</p>
-                      <p className="text-[11px] text-slate-500 mt-0.5">Brand: {product.brand}</p>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider">
-                        {product.category}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <span className="font-mono text-sm font-medium text-slate-900">{formatCurrency(product.price)}</span>
-                      <span className="text-slate-400 font-normal text-xs ml-1">/ {product.unit}</span>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <button 
-                          onClick={() => handleEditProduct(product)}
-                          className="flex items-center gap-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition shadow-sm active:scale-95"
-                          title="Edit product"
-                        >
-                          <Pencil className="w-3.5 h-3.5 text-blue-600" />
-                          <span>Edit</span>
-                        </button>
-                        <button 
-                          onClick={() => handleDeleteProduct(product.id, product.name)}
-                          className="flex items-center gap-1.5 bg-red-50 hover:bg-red-100 border border-red-100 text-red-600 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition shadow-sm active:scale-95"
-                          title="Delete product"
-                        >
-                          <Trash2 className="w-3.5 h-3.5 text-red-600" />
-                          <span>Delete</span>
-                        </button>
-                      </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {sortedAndFiltered.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="p-8 text-center text-slate-500 text-sm">
+                      No products found matching your search.
                     </td>
                   </tr>
-                ))}
-                {filtered.length === 0 && (
-                   <tr>
-                   <td colSpan={5} className="p-8 text-center text-slate-500 text-sm">
-                     No products found matching your search.
-                   </td>
-                 </tr>
                 )}
               </tbody>
             </table>
           )}
         </div>
       </div>
+
+      {/* Bulk Delete Confirmation Modal */}
+      {isBulkDeleteModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden border border-slate-100 flex flex-col max-h-[85vh]">
+            <div className="p-6 text-center border-b border-slate-100">
+              <div className="w-12 h-12 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-3 border border-red-100">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-900">Bulk Delete Products</h3>
+              <p className="text-sm text-slate-500 mt-1">
+                Are you sure you want to delete <span className="font-semibold text-slate-800">{selectedIds.size}</span> selected products?
+              </p>
+            </div>
+            
+            {/* Scrollable list of products to delete */}
+            <div className="p-5 flex-1 overflow-y-auto bg-slate-50/50 max-h-40 divide-y divide-slate-100 border-b border-slate-100">
+              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Products Selected for Deletion:</p>
+              {products.filter(p => p.id && selectedIds.has(p.id)).map(p => (
+                <div key={p.id} className="py-2 flex items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-slate-800 truncate">{p.name}</p>
+                    <p className="text-xs text-slate-500 font-mono mt-0.5">{p.sku}</p>
+                  </div>
+                  <span className="text-xs font-semibold text-slate-600 shrink-0 uppercase">{p.category}</span>
+                </div>
+              ))}
+            </div>
+
+            {bulkDeleteError && (
+              <div className="p-4 bg-red-50 border-b border-red-100 text-red-600 text-xs font-semibold">
+                {bulkDeleteError}
+              </div>
+            )}
+
+            <div className="p-4 bg-slate-50 flex justify-end gap-3 shrink-0">
+              <button 
+                type="button"
+                disabled={isDeletingBulk}
+                onClick={() => {
+                  setIsBulkDeleteModalOpen(false);
+                  setBulkDeleteError(null);
+                }} 
+                className="px-4 py-2 border border-slate-200 bg-white hover:bg-slate-50 rounded-lg text-sm font-semibold text-slate-600 transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                type="button"
+                disabled={isDeletingBulk}
+                onClick={confirmBulkDelete} 
+                className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-bold transition-all shadow-sm active:scale-95 disabled:opacity-50 flex items-center gap-2"
+              >
+                {isDeletingBulk ? (
+                  <>
+                    <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                    <span>Deleting {selectedIds.size}...</span>
+                  </>
+                ) : (
+                  <span>Confirm Bulk Delete</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
