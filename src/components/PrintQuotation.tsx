@@ -264,7 +264,7 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
                   {items.map((item) => {
                     const globalIndex = safeItems.indexOf(item);
                     const srNo = globalIndex + 1;
-                    const imgUrl = (preloadedImages && item.product?.sku && preloadedImages[item.product.sku]) || item.product?.image;
+                    const imgUrl = (preloadedImages && item.id && preloadedImages[item.id]) || (preloadedImages && item.product?.sku && preloadedImages[item.product.sku]) || item.product?.image;
 
                     return (
                       <tr key={`item-${globalIndex}`} className="page-break-inside-avoid">

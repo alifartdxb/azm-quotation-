@@ -50,6 +50,14 @@ function QuotationBuilder() {
 
   const convertImgToBase64 = (url: string): Promise<string> => {
     return new Promise((resolve) => {
+      if (!url) {
+        resolve('');
+        return;
+      }
+      if (url.startsWith('data:image/')) {
+        resolve(url);
+        return;
+      }
       const img = new Image();
       img.crossOrigin = 'anonymous';
       img.onload = () => {
@@ -119,12 +127,19 @@ function QuotationBuilder() {
       let headerBase64 = '';
       let footerBase64 = '';
       const promises: Promise<any>[] = imagesToLoad.map(async (item) => {
-        if (item.product?.image && item.product?.sku) {
+        if (item.product?.image) {
           try {
             const base64 = await convertImgToBase64(item.product.image);
-            if (base64) preloaded[item.product.sku] = base64;
+            if (base64) {
+              if (item.product.sku) {
+                preloaded[item.product.sku] = base64;
+              }
+              if (item.id) {
+                preloaded[item.id] = base64;
+              }
+            }
           } catch (imageErr) {
-            console.warn(`Failed to convert image for sku ${item.product.sku}:`, imageErr);
+            console.warn(`Failed to convert image:`, imageErr);
           }
         }
       });
@@ -413,8 +428,8 @@ function QuotationBuilder() {
         didDrawCell: (data: any) => {
           if (data.section === 'body' && data.column.index === 2) {
             const item = safeItems[data.row.index];
-            if (item && item.product && item.product.sku) {
-              const base64 = preloaded[item.product.sku]; // Use the local preloaded object, not state
+            if (item && item.product) {
+              const base64 = (item.id && preloaded[item.id]) || (item.product.sku && preloaded[item.product.sku]) || item.product.image;
               if (base64) {
                 const dim = 12;
                 const x = data.cell.x + (data.cell.width / 2) - (dim / 2);
