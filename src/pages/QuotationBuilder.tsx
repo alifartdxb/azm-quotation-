@@ -38,8 +38,8 @@ function QuotationBuilder() {
     subject: '',
     items: [],
     status: 'Draft',
-    salesperson: 'Ahmed Abdullah',
-    preparedBy: 'Rukaiya'
+    salesperson: 'Sabeer',
+    preparedBy: 'Ali G'
   });
 
   const printRef = useRef<HTMLDivElement>(null);
@@ -362,7 +362,7 @@ function QuotationBuilder() {
           ['Validity:', `${safeValidityDays} Days`],
           ['TRN:', appSettings?.trn || '1002 5994 2900 003'],
           ['Salesperson:', safeSalesperson],
-          ['Prepared By:', quote.preparedBy || 'Rukaiya']
+          ['Prepared By:', quote.preparedBy || 'Ali G']
         ]
       });
 
@@ -711,8 +711,8 @@ function QuotationBuilder() {
               subject: q.subject || '',
               items: q.items || [],
               status: q.status || 'Draft',
-              salesperson: q.salesperson || 'Ahmed Abdullah',
-              preparedBy: q.preparedBy || 'Rukaiya',
+              salesperson: q.salesperson || 'Sabeer',
+              preparedBy: q.preparedBy || 'Ali G',
               quoteNo: q.quoteNo || '',
               subtotal: q.subtotal || 0,
               discountAmount: q.discountAmount || 0,
@@ -758,8 +758,8 @@ function QuotationBuilder() {
             vatAmount: 0,
             grandTotal: 0,
             status: 'Draft',
-            salesperson: 'Ahmed Abdullah',
-            preparedBy: 'Rukaiya',
+            salesperson: 'Sabeer',
+            preparedBy: 'Ali G',
             quoteNo: nextQuoteNo,
           });
         }
