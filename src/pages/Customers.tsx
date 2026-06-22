@@ -94,10 +94,10 @@ export default function Customers() {
   const filteredCustomers = useMemo(() => {
     return customers.filter(c => {
       const matchSearch = 
-        c.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.mobile.includes(searchTerm) ||
-        c.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (c.customerName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (c.companyName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (c.mobile || '').includes(searchTerm) ||
+        (c.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         (c.trn && c.trn.includes(searchTerm));
 
       const matchType = selectedType === 'All' || c.customerType === selectedType;

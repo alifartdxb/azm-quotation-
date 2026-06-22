@@ -133,6 +133,7 @@ export interface WhatsAppCampaign {
   name: string;
   templateId: string;
   templateName: string;
+  senderId?: string;
   sentCount: number;
   failedCount: number;
   recipients: {

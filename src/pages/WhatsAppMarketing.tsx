@@ -43,6 +43,8 @@ export default function WhatsAppMarketing() {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [isManagingTemplates, setIsManagingTemplates] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<Partial<WhatsAppTemplate> | null>(null);
+  const [showLaunchConfirm, setShowLaunchConfirm] = useState(false);
+  const [senderId, setSenderId] = useState<string>('+971558090292');
 
   // Active Sending / Simulation State
   const [isSending, setIsSending] = useState(false);
@@ -88,9 +90,9 @@ export default function WhatsAppMarketing() {
   const filteredCustomers = useMemo(() => {
     return customers.filter(c => {
       const matchSearch = 
-        c.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.mobile.includes(searchTerm);
+        (c.customerName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (c.companyName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (c.mobile || '').includes(searchTerm);
       const matchType = filterType === 'All' || c.customerType === filterType;
       const matchTag = filterTag === 'All' || c.tag === filterTag;
       return matchSearch && matchType && matchTag;
@@ -156,8 +158,8 @@ export default function WhatsAppMarketing() {
     return compileMessage(activeTemplate.body, sampleCustomer);
   }, [activeTemplate, customers, selectedCustomerIds]);
 
-  // Execute Bulk Campaign
-  const handleLaunchCampaign = async () => {
+  // Execute Bulk Campaign Trigger
+  const handleLaunchCampaign = () => {
     if (selectedCustomerIds.length === 0) {
       alert("Please select at least one recipient first.");
       return;
@@ -166,17 +168,43 @@ export default function WhatsAppMarketing() {
       alert("Please select a template first.");
       return;
     }
+    setShowLaunchConfirm(true);
+  };
 
-    const recipientList = customers.filter(c => selectedCustomerIds.includes(c.id as string));
-    if (recipientList.length === 0) return;
-
-    if (!window.confirm(`Launch Campaign "${activeTemplate.name}" to ${recipientList.length} selected customers?`)) {
+  // Actual Campaign Runner after customized user confirmation
+  const executeCampaignConfirmed = async () => {
+    setShowLaunchConfirm(false);
+    
+    // Validate sender identity before dispatching
+    const ALLOWED_SENDER = '+971558090292';
+    
+    // Strict authentication & authorization validation check
+    if (senderId.trim() !== ALLOWED_SENDER) {
+      alert(`SECURITY REJECTION: Attempt to broadcast from unauthorized sender ID "${senderId}". Only verified official corporate gateway "${ALLOWED_SENDER}" is allowed to dispatch bulk customer marketing messages.`);
       return;
     }
+    
+    const recipientList = customers.filter(c => selectedCustomerIds.includes(c.id as string));
+    if (recipientList.length === 0) return;
 
     setIsSending(true);
     setProgress(0);
     setCompletedCampaign(null);
+
+    // Construct verified hardcoded API payload structure for secure outbound dispatching
+    const apiPayload = {
+      sender_id: ALLOWED_SENDER, // strictly hardcoded sender ID
+      template_id: activeTemplate.id,
+      timestamp: new Date().toISOString(),
+      recipients: recipientList.map(r => ({
+        customer_id: r.id || '',
+        customer_name: r.customerName,
+        phone_number: r.whatsapp || r.mobile,
+        compiled_body: compileMessage(activeTemplate.body, r)
+      }))
+    };
+    
+    console.log("🔒 VERIFIED SENDER DISPATCH SUCCESSFUL. Outbound Simulated API Payload:", apiPayload);
 
     const logs: { name: string; status: 'pending' | 'success' | 'failed'; details?: string }[] = recipientList.map(r => ({
       name: r.customerName,
@@ -233,6 +261,7 @@ export default function WhatsAppMarketing() {
       name: activeTemplate.name,
       templateId: activeTemplate.id,
       templateName: activeTemplate.name,
+      senderId: ALLOWED_SENDER,
       sentCount: successfullySent,
       failedCount: failed,
       createdAt: new Date().toISOString(),
@@ -357,6 +386,70 @@ export default function WhatsAppMarketing() {
             <Plus className="w-4 h-4 text-[#C9A96E]" />
             New Template
           </button>
+        </div>
+      </div>
+
+      {/* AZM Verified Corporate Sender Gateway Status Board */}
+      <div className="bg-gradient-to-r from-[#1B6B72]/10 via-[#F5F0E8] to-[#C9A96E]/10 p-5 rounded-2xl border border-[#1B6B72]/20 shadow-sm grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+        <div className="md:col-span-2 flex items-center gap-3">
+          <div className="relative">
+            <div className="w-11 h-11 rounded-full bg-[#1B6B72] flex items-center justify-center text-white shadow-md">
+              <MessageSquare className="w-6 h-6 fill-current" />
+            </div>
+            <span className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-white border border-emerald-500">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            </span>
+          </div>
+          <div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] uppercase tracking-wider font-bold text-slate-500">Official Company Sender</span>
+              <span className={cn(
+                "px-1.5 py-0.2 text-[8px] font-bold uppercase rounded-md tracking-wider transition-colors",
+                senderId.trim() === '+971558090292' ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"
+              )}>
+                {senderId.trim() === '+971558090292' ? 'Gateway Connected' : 'Security Alert: Unauthorized'}
+              </span>
+            </div>
+            <div className="mt-1 flex items-center gap-2">
+              <input 
+                type="text" 
+                value={senderId} 
+                onChange={(e) => setSenderId(e.target.value)} 
+                className={cn(
+                  "bg-white border rounded-lg px-2.5 py-0.5 text-sm font-mono font-bold focus:outline-none focus:ring-1 w-44 transition-colors",
+                  senderId.trim() === '+971558090292' ? "border-slate-200 text-slate-900 focus:ring-[#1B6B72]" : "border-rose-400 text-rose-700 bg-rose-50/50 focus:ring-rose-500"
+                )}
+                placeholder="Sender ID"
+              />
+              {senderId.trim() === '+971558090292' ? (
+                <span className="text-[9px] text-emerald-600 font-bold uppercase tracking-wider flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                  Verified
+                </span>
+              ) : (
+                <span className="text-[9px] text-rose-600 font-bold uppercase tracking-wider flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                  Blocked
+                </span>
+              )}
+            </div>
+            <span className="text-[10px] text-slate-500 block font-medium mt-1">Al Zahra Al Malakia Building Materials (AZM Group)</span>
+          </div>
+        </div>
+
+        <div className="border-t md:border-t-0 md:border-l border-slate-200/80 pt-3 md:pt-0 md:pl-4 space-y-0.5">
+          <span className="text-[9px] uppercase tracking-wider font-bold text-slate-400 block">Channel Routing</span>
+          <strong className="text-xs text-slate-800 font-semibold block">Dubai & Sharjah B2B Portals</strong>
+          <span className="text-[9px] text-[#1B6B72] font-semibold block">Rate limit fallback: Active</span>
+        </div>
+
+        <div className="border-t md:border-t-0 md:border-l border-slate-200/80 pt-3 md:pt-0 md:pl-4 flex flex-col justify-center">
+          <span className="text-[9px] uppercase tracking-wider font-bold text-slate-400 block">Official Credentials</span>
+          <div className="flex items-center gap-1 mt-0.5">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+            <span className="text-[11px] font-bold text-slate-800">Business Certified</span>
+          </div>
+          <span className="text-[9px] text-slate-400 block">All system broadcasts linked</span>
         </div>
       </div>
 
@@ -796,6 +889,79 @@ export default function WhatsAppMarketing() {
                 className="py-2 px-5 bg-[#1B6B72] hover:bg-[#155359] text-white font-bold rounded-xl shadow-md transition"
               >
                 Log Save Preset Template
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Premium Branded Confirmation Dialog for Campaign Execution */}
+      {showLaunchConfirm && activeTemplate && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+            <div className="p-4 border-b border-slate-100 bg-gradient-to-r from-[#1B6B72]/10 via-transparent to-transparent flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-[#1B6B72]/10 flex items-center justify-center text-[#1B6B72]">
+                <MessageSquare className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-serif text-[13px] font-bold text-slate-905">
+                  Confirm Campaign Pipeline Output
+                </h3>
+                <p className="text-[9px] text-[#94a3b8] font-semibold tracking-wider uppercase">B2B WhatsApp Automated Service</p>
+              </div>
+            </div>
+
+            <div className="p-5 space-y-4 text-xs">
+              <p className="text-slate-600 leading-relaxed font-sans">
+                You are about to launch the customized message template <strong className="text-slate-900 font-serif">"{activeTemplate.name}"</strong> from gateway identity <strong className="text-slate-900 font-mono">{senderId}</strong> to:
+              </p>
+
+              <div className="bg-[#1B6B72]/5 border border-[#1B6B72]/15 p-3 px-4 rounded-xl flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Target Recipients</span>
+                  <strong className="text-lg font-bold font-mono text-[#1B6B72]">{selectedCustomerIds.length} Accounts</strong>
+                </div>
+                <div className={cn(
+                  "px-2 py-0.5 rounded-full text-[8px] uppercase font-mono font-bold",
+                  senderId.trim() === '+971558090292' ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800 animate-pulse"
+                )}>
+                  {senderId.trim() === '+971558090292' ? 'Simulated API' : 'API Blocked'}
+                </div>
+              </div>
+
+              {senderId.trim() === '+971558090292' ? (
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 leading-normal flex gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-[#1B6B72]" />
+                  <p className="text-[10px]">
+                    All dispatched messages originate from the verified enterprise number <strong className="text-slate-900 font-mono">+971 55 809 0292</strong>. History logs & executive CRM pipeline stats auto-update immediately.
+                  </p>
+                </div>
+              ) : (
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 leading-normal flex gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
+                  <div className="text-[10px] space-y-0.5">
+                    <strong className="font-bold block">Security Exception Trigger</strong>
+                    <p>
+                      The gateway number <strong className="font-mono">{senderId}</strong> is unauthorized. Dispatched campaign pipeline rejects this request instantly.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3 text-xs">
+              <button 
+                onClick={() => setShowLaunchConfirm(false)}
+                className="py-2 px-3.5 hover:bg-slate-100 border border-slate-200 rounded-xl font-bold text-slate-600 transition"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={executeCampaignConfirmed}
+                className="py-2 px-4.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md transition flex items-center gap-1.5"
+              >
+                <Send className="w-3.5 h-3.5" />
+                Launch Campaign
               </button>
             </div>
           </div>
