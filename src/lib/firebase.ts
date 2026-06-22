@@ -1,7 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, getDocs, doc, setDoc, addDoc, updateDoc, deleteDoc, getDoc, query, orderBy, where, serverTimestamp, runTransaction } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
-import type { Customer, Product, Quotation, AuditLog, AppSettings } from '../types';
+import type { Customer, Product, Quotation, AuditLog, AppSettings, CrmCustomer, WhatsAppTemplate, WhatsAppCampaign } from '../types';
 
 const firebaseConfig = {
   projectId: "gen-lang-client-0576582933",
@@ -190,6 +190,11 @@ export const getQuotation = async (id: string): Promise<Quotation | null> => {
 export const getDashboardStats = async () => {
   const products = await getProducts();
   const quotations = await getQuotations();
+  const customers = await getCrmCustomers();
+
+  // Find customers with upcoming follow ups
+  const today = new Date().toISOString().split('T')[0];
+  const followUpCount = customers.filter(c => c.followUpDate && c.followUpDate >= today).length;
 
   return {
     totalQuotes: quotations.length,
@@ -197,5 +202,250 @@ export const getDashboardStats = async () => {
     approvedQuotes: quotations.filter(q => q.status === 'Approved' || q.status === 'Converted to Order').length,
     totalProducts: products.length,
     recentQuotes: quotations.slice(0, 5),
+    totalCustomers: customers.length,
+    activeCustomers: customers.filter(c => c.tag === 'Active Customer').length,
+    hotLeads: customers.filter(c => c.tag === 'Hot Lead').length,
+    followUpRequired: followUpCount,
   };
 };
+
+// ==========================================
+// CRM CUSTOMER HELPERS
+// ==========================================
+
+export const getCrmCustomers = async (): Promise<CrmCustomer[]> => {
+  const q = query(collection(db, 'crm_customers'), orderBy('customerName'));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as CrmCustomer));
+};
+
+export const getCrmCustomerQuotationHistory = async (mobile: string): Promise<Quotation[]> => {
+  if (!mobile) return [];
+  const q = query(collection(db, 'quotations'), orderBy('createdAt', 'desc'));
+  const snapshot = await getDocs(q);
+  const quotes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Quotation));
+  // Filter client-side to handle variations in formatting or just straight matches
+  const cleanMobile = mobile.replace(/[^0-9]/g, '');
+  return quotes.filter(quote => {
+    if (!quote.customer?.mobile) return false;
+    const qMobile = quote.customer.mobile.replace(/[^0-9]/g, '');
+    return qMobile === cleanMobile || quote.customer.mobile === mobile;
+  });
+};
+
+export const deleteCrmCustomer = async (id: string): Promise<void> => {
+  await deleteDoc(doc(db, 'crm_customers', id));
+};
+
+export const saveCrmCustomer = async (customer: Partial<CrmCustomer>): Promise<string> => {
+  const id = customer.id;
+  const mobile = customer.mobile ? customer.mobile.trim() : '';
+  const email = customer.email ? customer.email.trim().toLowerCase() : '';
+
+  if (!mobile) {
+    throw new Error('Mobile number is required for customer record.');
+  }
+
+  // Cross-reference for duplicates
+  const customersRef = collection(db, 'crm_customers');
+  const snapshot = await getDocs(customersRef);
+  const allCustomers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as CrmCustomer));
+
+  const duplicate = allCustomers.find(c => {
+    // skip self
+    if (id && c.id === id) return false;
+    const cMobileClean = c.mobile.replace(/[^0-9]/g, '');
+    const inputMobileClean = mobile.replace(/[^0-9]/g, '');
+    const isMobileMatch = cMobileClean === inputMobileClean && cMobileClean.length >= 7;
+    const isEmailMatch = email && c.email && c.email.trim().toLowerCase() === email;
+    return isMobileMatch || isEmailMatch;
+  });
+
+  if (duplicate) {
+    throw new Error(`A customer with the same Mobile (${duplicate.mobile}) or Email (${duplicate.email}) already exists: ${duplicate.customerName} of ${duplicate.companyName || 'No Company'}`);
+  }
+
+  const cleanData = {
+    customerName: customer.customerName || '',
+    companyName: customer.companyName || '',
+    contactPerson: customer.contactPerson || '',
+    mobile: mobile,
+    whatsapp: customer.whatsapp || mobile,
+    email: email,
+    trn: customer.trn || '',
+    address: customer.address || '',
+    city: customer.city || 'Dubai',
+    projectName: customer.projectName || '',
+    customerType: customer.customerType || 'Retail',
+    tag: customer.tag || 'Hot Lead',
+    notes: customer.notes || '',
+    createdAt: customer.createdAt || new Date().toISOString(),
+    lastQuotationDate: customer.lastQuotationDate || '',
+    lastQuotationNo: customer.lastQuotationNo || '',
+    followUpDate: customer.followUpDate || '',
+    followUpNotes: customer.followUpNotes || '',
+    followUpType: customer.followUpType || 'None'
+  };
+
+  if (id) {
+    await setDoc(doc(db, 'crm_customers', id), cleanData);
+    return id;
+  } else {
+    const docRef = await addDoc(collection(db, 'crm_customers'), cleanData);
+    return docRef.id;
+  }
+};
+
+export const syncQuotationCustomerToCrm = async (quotation: Quotation): Promise<void> => {
+  const cust = quotation.customer;
+  if (!cust || !cust.mobile) return;
+
+  const mobile = cust.mobile.trim();
+  const email = cust.email ? cust.email.trim().toLowerCase() : '';
+  const name = cust.customerName || '';
+
+  const customersRef = collection(db, 'crm_customers');
+  const snapshot = await getDocs(customersRef);
+  const allCustomers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as CrmCustomer));
+
+  const existing = allCustomers.find(c => {
+    const cMobileClean = c.mobile.replace(/[^0-9]/g, '');
+    const inputMobileClean = mobile.replace(/[^0-9]/g, '');
+    const isMobileMatch = cMobileClean === inputMobileClean && cMobileClean.length >= 7;
+    const isEmailMatch = email && c.email && c.email.trim().toLowerCase() === email;
+    return isMobileMatch || isEmailMatch;
+  });
+
+  const updatedData: Partial<CrmCustomer> = {
+    customerName: name,
+    companyName: cust.companyName || '',
+    contactPerson: cust.contactPerson || '',
+    mobile: mobile,
+    email: email,
+    trn: cust.trn || '',
+    address: cust.address || '',
+    projectName: cust.projectName || '',
+    lastQuotationDate: quotation.createdAt || new Date().toISOString(),
+    lastQuotationNo: quotation.quoteNo || ''
+  };
+
+  if (existing) {
+    // Merge existing non-empty values
+    const merged = {
+      ...existing,
+      ...updatedData,
+      whatsapp: existing.whatsapp || mobile,
+      customerType: existing.customerType || 'Retail',
+      tag: existing.tag === 'Hot Lead' ? 'Active Customer' : (existing.tag || 'Active Customer') // Upgrade hot leads to active customer once a quotation is locked
+    };
+    await setDoc(doc(db, 'crm_customers', existing.id as string), merged);
+  } else {
+    // Create new
+    const newCustomer: CrmCustomer = {
+      customerName: name,
+      companyName: cust.companyName || '',
+      contactPerson: cust.contactPerson || '',
+      mobile: mobile,
+      whatsapp: mobile,
+      email: email,
+      trn: cust.trn || '',
+      address: cust.address || '',
+      city: 'Dubai',
+      projectName: cust.projectName || '',
+      customerType: 'Retail',
+      tag: 'Hot Lead',
+      notes: 'Automatically added from Quotation ' + (quotation.quoteNo || ''),
+      createdAt: quotation.createdAt || new Date().toISOString(),
+      lastQuotationDate: quotation.createdAt || new Date().toISOString(),
+      lastQuotationNo: quotation.quoteNo || ''
+    };
+    await addDoc(collection(db, 'crm_customers'), newCustomer);
+  }
+};
+
+// ==========================================
+// WHATSAPP TEMPLATE HELPERS
+// ==========================================
+
+export const getWhatsAppTemplates = async (): Promise<WhatsAppTemplate[]> => {
+  const snapshot = await getDocs(collection(db, 'whatsapp_templates'));
+  let templates = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as WhatsAppTemplate));
+
+  // Seed default templates if database is empty
+  if (templates.length === 0) {
+    const defaultTemplates: WhatsAppTemplate[] = [
+      {
+        id: 'new-product-launch',
+        name: 'New Product Launch',
+        type: 'New Product Launch',
+        body: 'Dear {{CustomerName}},\n\nGreetings from Al Zahra Al Malakia Building Materials (AZM Group).\n\nWe are excited to announce our new premium collection of luxury Italian sanitaryware and large-format porcelain slabs. Perfect for modern residential projects!\n\nContact us on +971 4 28 444 52 or visit our Warsan-3 showroom to view the full range.\n\nBest Regards,\n{{PreparedBy}}',
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: 'promotional-offer',
+        name: 'Promotional Offer',
+        type: 'Promotional Offer',
+        body: 'Dear {{CustomerName}},\n\nExclusive Offer from AZM Group (Al Zahra Al Malakia) for our premium builder/contractor network!\n\nThis month, enjoy special pricing on select porcelain tiles and bathroom fittings from top brands like Grohe, Jaquar, and VitrA.\n\nReply to this message for a personalized quote list.\n\nBest Regards,\n{{PreparedBy}}',
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: 'follow-up-reminder',
+        name: 'Follow-up Reminder',
+        type: 'Follow-up Reminder',
+        body: 'Dear {{CustomerName}},\n\nWe trust you are doing well.\n\nThis is Ali from Al Zahra Al Malakia Bldg Mat. Just wanted to follow up on your luxury villa renovation and see if you need further help with materials list or tiles layout planning. Let us know!\n\nBest Regards,\n{{PreparedBy}}',
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: 'holiday-greetings',
+        name: 'Holiday Greetings',
+        type: 'Holiday Greetings',
+        body: 'Dear {{CustomerName}},\n\nAl Zahra Al Malakia Building Materials LLC wishes you and your family a blessed, joyful, and peaceful holiday season.\n\nThank you for choosing AZM Group as your trusted partner for premium building materials. We look forward to shaping beautiful spaces together in the coming year!\n\nBest Regards,\n{{PreparedBy}}',
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: 'payment-reminder',
+        name: 'Payment Reminder',
+        type: 'Payment Reminder',
+        body: 'Dear {{CustomerName}},\n\nHope this message finds you well.\n\nThis is a friendly reminder regarding the pending balance for your recent order against Quotation #{{LastQuotationNo}}.\n\nKindly proceed with the bank transfer to our Dubai Islamic Bank account at your earliest convenience to facilitate on-time delivery.\n\nBest Regards,\n{{PreparedBy}}',
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: 'quotation-follow-up',
+        name: 'Quotation Follow-up',
+        type: 'Quotation Follow-up',
+        body: 'Dear {{CustomerName}},\n\nGreetings from Al Zahra Al Malakia Building Materials Trading LLC (AZM Group).\n\nThank you for your interest in our premium building materials. We are pleased to assist you with quotation #{{LastQuotationNo}}.\n\nIs there anything we can modify or add to the bathroom mixers / tiles specifications for your project? Feel free to contact us.\n\nBest Regards,\n{{PreparedBy}}',
+        createdAt: new Date().toISOString()
+      }
+    ];
+
+    for (const temp of defaultTemplates) {
+      await setDoc(doc(db, 'whatsapp_templates', temp.id), temp);
+    }
+    templates = defaultTemplates;
+  }
+
+  return templates;
+};
+
+export const saveWhatsAppTemplate = async (template: WhatsAppTemplate): Promise<void> => {
+  await setDoc(doc(db, 'whatsapp_templates', template.id), template);
+};
+
+export const deleteWhatsAppTemplate = async (id: string): Promise<void> => {
+  await deleteDoc(doc(db, 'whatsapp_templates', id));
+};
+
+// ==========================================
+// WHATSAPP CAMPAIGN HISTORIES
+// ==========================================
+
+export const getWhatsAppCampaigns = async (): Promise<WhatsAppCampaign[]> => {
+  const q = query(collection(db, 'whatsapp_campaigns'), orderBy('createdAt', 'desc'));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as WhatsAppCampaign));
+};
+
+export const saveWhatsAppCampaign = async (campaign: WhatsAppCampaign): Promise<void> => {
+  await setDoc(doc(db, 'whatsapp_campaigns', campaign.id), campaign);
+};
+

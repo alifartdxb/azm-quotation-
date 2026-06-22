@@ -57,6 +57,10 @@ export interface DashboardStats {
   approvedQuotes: number;
   totalProducts: number;
   recentQuotes: Quotation[];
+  totalCustomers?: number;
+  activeCustomers?: number;
+  hotLeads?: number;
+  followUpRequired?: number;
 }
 
 export interface AuditLog {
@@ -92,3 +96,53 @@ export interface AppSettings {
   showStampInPreview?: boolean;
   showStampOnLastPageOnly?: boolean;
 }
+
+export interface CrmCustomer {
+  id?: string;
+  customerName: string;
+  companyName: string;
+  contactPerson?: string;
+  mobile: string;
+  whatsapp?: string;
+  email: string;
+  trn: string;
+  address: string;
+  city?: string;
+  projectName?: string;
+  customerType: 'Retail' | 'Contractor' | 'Builder' | 'Interior Designer' | 'Architect' | 'Project Customer' | 'Dealer' | 'VIP' | string;
+  tag: 'Hot Lead' | 'Active Customer' | 'Inactive Customer' | 'Follow Up Required' | string;
+  notes?: string;
+  createdAt: string;
+  lastQuotationDate?: string;
+  lastQuotationNo?: string;
+  followUpDate?: string;
+  followUpNotes?: string;
+  followUpType?: 'Call' | 'WhatsApp' | 'None' | string;
+}
+
+export interface WhatsAppTemplate {
+  id: string;
+  name: string;
+  type: 'New Product Launch' | 'Promotional Offer' | 'Follow-up Reminder' | 'Holiday Greetings' | 'Payment Reminder' | 'Quotation Follow-up' | string;
+  body: string;
+  createdAt: string;
+}
+
+export interface WhatsAppCampaign {
+  id: string;
+  name: string;
+  templateId: string;
+  templateName: string;
+  sentCount: number;
+  failedCount: number;
+  recipients: {
+    customerId: string;
+    customerName: string;
+    mobile: string;
+    status: 'Sent' | 'Failed' | string;
+    sentAt: string;
+    error?: string;
+  }[];
+  createdAt: string;
+}
+

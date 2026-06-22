@@ -8,6 +8,8 @@ import Login from './pages/Login';
 import Settings from './pages/Settings';
 import AuditLogs from './pages/AuditLogs';
 import Profile from './pages/Profile';
+import Customers from './pages/Customers';
+import WhatsAppMarketing from './pages/WhatsAppMarketing';
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -28,6 +30,8 @@ export default function App() {
             <Route path="products" element={<Products />} />
             <Route path="quotations" element={<Quotations />} />
             <Route path="profile" element={<Profile />} />
+            <Route path="customers" element={<Customers />} />
+            <Route path="whatsapp-marketing" element={<WhatsAppMarketing />} />
             <Route path="audit-logs" element={
               <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
                 <AuditLogs />

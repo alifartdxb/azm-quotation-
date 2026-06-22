@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { ShoppingCart, Users, FileText, CheckCircle, Clock } from 'lucide-react';
+import { ShoppingCart, Users, FileText, CheckCircle, Clock, MessageSquare, Calendar, ArrowUpRight } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import type { DashboardStats, Quotation } from '../types';
@@ -133,6 +133,85 @@ export default function Dashboard() {
                 )}
              </div>
            </div>
+        </div>
+      </div>
+
+      {/* CRM Lightweight Executive Statistics Panel */}
+      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+        <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+          <div>
+            <h3 className="font-serif font-bold text-slate-905 text-base">AZM Customer CRM & Pipeline Insights</h3>
+            <p className="text-slate-400 text-xs mt-0.5">Automated tracking of contractor engagement, hot leads, and WhatsApp conversion history.</p>
+          </div>
+          <button 
+            onClick={() => window.location.href = '/customers'}
+            className="text-xs font-bold text-[#1B6B72] hover:underline flex items-center gap-1.5 bg-[#1B6B72]/5 px-3 py-1.5 rounded-xl border border-[#1B6B72]/15"
+          >
+            Access CRM Hub
+            <ArrowUpRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {/* Total CRM Database */}
+          <div className="bg-slate-50 p-4 rounded-xl border border-slate-150 flex items-center gap-4 hover:border-[#1B6B72]/30 hover:bg-[#1B6B72]/5 transition-all">
+            <div className="p-3 bg-blue-100 rounded-xl text-blue-700 shrink-0">
+              <Users className="w-5 h-5" />
+            </div>
+            <div>
+              <span className="text-slate-400 font-semibold uppercase tracking-wider text-[9px] block">New / Registered Customers</span>
+              <strong className="text-xl font-bold font-mono text-slate-900 block mt-0.5">{stats.totalCustomers || 0}</strong>
+            </div>
+          </div>
+
+          {/* Active Contacts */}
+          <div className="bg-slate-50 p-4 rounded-xl border border-slate-150 flex items-center gap-4 hover:border-[#1B6B72]/30 hover:bg-[#1B6B72]/5 transition-all">
+            <div className="p-3 bg-emerald-100 rounded-xl text-emerald-700 shrink-0">
+              <CheckCircle className="w-5 h-5" />
+            </div>
+            <div>
+              <span className="text-slate-400 font-semibold uppercase tracking-wider text-[9px] block">Active Accounts</span>
+              <strong className="text-xl font-bold font-mono text-slate-900 block mt-0.5">{stats.activeCustomers || 0}</strong>
+            </div>
+          </div>
+
+          {/* Hot Leads */}
+          <div className="bg-slate-50 p-4 rounded-xl border border-slate-150 flex items-center gap-4 hover:border-[#1B6B72]/30 hover:bg-[#1B6B72]/5 transition-all">
+            <div className="p-3 bg-red-105 rounded-xl text-red-600 shrink-0">
+              <Clock className="w-5 h-5" />
+            </div>
+            <div>
+              <span className="text-slate-400 font-semibold uppercase tracking-wider text-[9px] block">Hot Leads</span>
+              <strong className="text-xl font-bold font-mono text-slate-900 block mt-0.5">{stats.hotLeads || 0}</strong>
+            </div>
+          </div>
+
+          {/* Follow up actions required */}
+          <div className="bg-slate-50 p-4 rounded-xl border border-slate-150 flex items-center gap-4 hover:border-[#1B6B72]/30 hover:bg-[#1B6B72]/5 transition-all">
+            <div className="p-3 bg-amber-100 rounded-xl text-amber-700 shrink-0">
+              <Calendar className="w-5 h-5" />
+            </div>
+            <div>
+              <span className="text-slate-400 font-semibold uppercase tracking-wider text-[9px] block">Follow-ups Required</span>
+              <strong className="text-xl font-bold font-mono text-slate-900 block mt-0.5">{stats.followUpRequired || 0}</strong>
+            </div>
+          </div>
+        </div>
+
+        {/* Dynamic CRM marketing shortcuts banner */}
+        <div className="bg-gradient-to-r from-[#1B6B72]/5 to-[#C9A96E]/5 p-4 rounded-xl border border-[#1B6B72]/10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div className="space-y-1">
+            <strong className="text-xs text-slate-800 block">Deploy Automated Customer Engagement Campaigns</strong>
+            <p className="text-[11px] text-slate-500 leading-normal">
+              Connect directly with architects, builders, and developers or schedule personalized phone reminders regarding payment and quotation approvals.
+            </p>
+          </div>
+          <button 
+            onClick={() => window.location.href = '/whatsapp-marketing'}
+            className="py-1.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md transition whitespace-nowrap animate-pulse"
+          >
+            Open WhatsApp Marketing Module
+          </button>
         </div>
       </div>
     </div>

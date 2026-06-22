@@ -1,5 +1,5 @@
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Users, Package, FileText, Settings, LogOut, Menu, Search, Plus, Bell, Activity, User } from "lucide-react";
+import { LayoutDashboard, Users, Package, FileText, Settings, LogOut, Menu, Search, Plus, Bell, Activity, User, MessageSquare } from "lucide-react";
 import { useState } from "react";
 import { cn } from "../lib/utils";
 import { useAuth } from "../contexts/AuthContext";
@@ -23,6 +23,8 @@ export default function Layout() {
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { name: 'Quotations', path: '/quotations', icon: FileText },
     { name: 'Products', path: '/products', icon: Package },
+    { name: 'Customer Database', path: '/customers', icon: Users },
+    { name: 'WhatsApp Marketing', path: '/whatsapp-marketing', icon: MessageSquare },
     { name: 'My Profile', path: '/profile', icon: User },
   ];
 

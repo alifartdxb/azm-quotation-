@@ -9,7 +9,7 @@ import { formatCurrency, parseDate, cleanFirestoreData } from '../lib/utils';
 import { format } from 'date-fns';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { getProducts, getQuotation, db, generateNextQuotationNumber, logActivity, getAppSettings } from '../lib/firebase';
+import { getProducts, getQuotation, db, generateNextQuotationNumber, logActivity, getAppSettings, syncQuotationCustomerToCrm } from '../lib/firebase';
 import { collection, addDoc, updateDoc, doc } from 'firebase/firestore';
 
 function QuotationBuilder() {
@@ -910,10 +910,20 @@ function QuotationBuilder() {
       if (id) {
         await updateDoc(doc(db, 'quotations', id), quoteToSave);
         await logActivity('Updated Quotation', 'Quotation', id, `Updated status to ${quote.status}`);
+        try {
+          await syncQuotationCustomerToCrm(quoteToSave);
+        } catch (crmErr) {
+          console.error("Failed to sync updated quotation customer to CRM:", crmErr);
+        }
         setIsEditing(false);
       } else {
         const docRef = await addDoc(collection(db, 'quotations'), quoteToSave);
         await logActivity('Created Quotation', 'Quotation', docRef.id, `Created quote ${quoteNo}`);
+        try {
+          await syncQuotationCustomerToCrm(quoteToSave);
+        } catch (crmErr) {
+          console.error("Failed to sync new quotation customer to CRM:", crmErr);
+        }
         navigate(`/quotations/${docRef.id}`);
       }
     } catch (err) {
