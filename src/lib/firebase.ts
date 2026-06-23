@@ -1,7 +1,8 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, getDocs, doc, setDoc, addDoc, updateDoc, deleteDoc, getDoc, query, orderBy, where, serverTimestamp, runTransaction } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
-import type { Customer, Product, Quotation, AuditLog, AppSettings, CrmCustomer, WhatsAppTemplate, WhatsAppCampaign } from '../types';
+import type { Customer, Product, Quotation, AuditLog, AppSettings, CrmCustomer, WhatsAppTemplate, WhatsAppCampaign, SalesInvoice } from '../types';
+import { cleanFirestoreData } from './utils';
 
 const firebaseConfig = {
   projectId: "gen-lang-client-0576582933",
@@ -448,4 +449,172 @@ export const getWhatsAppCampaigns = async (): Promise<WhatsAppCampaign[]> => {
 export const saveWhatsAppCampaign = async (campaign: WhatsAppCampaign): Promise<void> => {
   await setDoc(doc(db, 'whatsapp_campaigns', campaign.id), campaign);
 };
+
+// ==========================================
+// SALES INVOICE HELPERS
+// ==========================================
+
+export const getSalesInvoices = async (): Promise<SalesInvoice[]> => {
+  const q = query(collection(db, 'sales_invoices'), orderBy('createdAt', 'desc'));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SalesInvoice));
+};
+
+export const getSalesInvoice = async (id: string): Promise<SalesInvoice | null> => {
+  const docRef = doc(db, 'sales_invoices', id);
+  const docSnap = await getDoc(docRef);
+  if (docSnap.exists()) {
+    return { id: docSnap.id, ...docSnap.data() } as SalesInvoice;
+  }
+  return null;
+};
+
+export const deleteSalesInvoice = async (id: string): Promise<void> => {
+  await deleteDoc(doc(db, 'sales_invoices', id));
+};
+
+export const updateSalesInvoiceStatus = async (id: string, status: string): Promise<void> => {
+  await updateDoc(doc(db, 'sales_invoices', id), { status });
+};
+
+export const generateNextInvoiceNumber = async (): Promise<string> => {
+  const counterRef = doc(db, 'counters', 'invoiceCounter');
+  let newInvoiceNo = '';
+  const user = auth.currentUser;
+  
+  await runTransaction(db, async (transaction) => {
+    const snap = await transaction.get(counterRef);
+    let currentNumber = 1;
+    let prefix = 'INV';
+    let year = 2026;
+    
+    if (!snap.exists()) {
+      const initialData = {
+        currentNumber: 1,
+        prefix: 'INV',
+        year: 2026
+      };
+      transaction.set(counterRef, initialData);
+      currentNumber = 1;
+      prefix = 'INV';
+      year = 2026;
+    } else {
+      const data = snap.data();
+      currentNumber = (data.currentNumber || 0) + 1;
+      prefix = data.prefix || 'INV';
+      year = data.year || 2026;
+      transaction.update(counterRef, {
+        currentNumber: currentNumber
+      });
+    }
+    
+    newInvoiceNo = `${prefix}-${year}-${String(currentNumber).padStart(6, '0')}`;
+  });
+  
+  if (user && newInvoiceNo) {
+    try {
+      await addDoc(collection(db, 'audit_logs'), {
+        userId: user.uid,
+        userEmail: user.email || 'unknown',
+        timestamp: new Date().toISOString(),
+        invoiceNumber: newInvoiceNo,
+        action: 'Invoice Number Generated',
+        entityType: 'System',
+        details: `Generated invoice sequence: ${newInvoiceNo}`
+      });
+    } catch (auditErr) {
+      console.error("Failed to write invoice generator audit log:", auditErr);
+    }
+  }
+  
+  return newInvoiceNo;
+};
+
+export const saveSalesInvoice = async (invoice: Partial<SalesInvoice>): Promise<string> => {
+  const id = invoice.id;
+  const cleanData = cleanFirestoreData({
+    invoiceNo: invoice.invoiceNo,
+    quotationNo: invoice.quotationNo || null,
+    quotationId: invoice.quotationId || null,
+    createdAt: invoice.createdAt || new Date().toISOString(),
+    customer: invoice.customer,
+    subject: invoice.subject || null,
+    items: invoice.items || [],
+    subtotal: invoice.subtotal || 0,
+    discountPercentage: invoice.discountPercentage || 0,
+    discountAmount: invoice.discountAmount || 0,
+    netTotal: invoice.netTotal || invoice.subtotal || 0,
+    vatAmount: invoice.vatAmount || 0,
+    grandTotal: invoice.grandTotal || 0,
+    status: invoice.status || 'Draft',
+    salesperson: invoice.salesperson || '',
+    preparedBy: invoice.preparedBy || '',
+    paymentStatus: invoice.paymentStatus || 'Unpaid',
+    paymentDate: invoice.paymentDate || null,
+    paymentMethod: invoice.paymentMethod || null,
+    chequeNo: invoice.chequeNo || null,
+    referenceNo: invoice.referenceNo || null,
+    outstandingBalance: invoice.outstandingBalance !== undefined ? invoice.outstandingBalance : (invoice.grandTotal || 0),
+    paidAmount: invoice.paidAmount || 0,
+    remarks: invoice.remarks || null
+  });
+
+  if (id) {
+    await setDoc(doc(db, 'sales_invoices', id), cleanData);
+    await logActivity('Updated Sales Invoice', 'System', id, `Updated sales invoice ${invoice.invoiceNo}`);
+    return id;
+  } else {
+    const docRef = await addDoc(collection(db, 'sales_invoices'), cleanData);
+    await logActivity('Created Sales Invoice', 'System', docRef.id, `Created sales invoice ${invoice.invoiceNo}`);
+    return docRef.id;
+  }
+};
+
+export const convertQuotationToSalesInvoice = async (quotation: Quotation): Promise<string> => {
+  // Prevent duplicate conversions if already converted
+  const invoices = await getSalesInvoices();
+  const alreadyConverted = invoices.find(inv => inv.quotationId === quotation.id);
+  if (alreadyConverted) {
+    throw new Error(`Quotation has already been converted to Invoice: ${alreadyConverted.invoiceNo}`);
+  }
+
+  // Generate new invoice number
+  const nextInvoiceNo = await generateNextInvoiceNumber();
+
+  const invoiceData: Partial<SalesInvoice> = {
+    invoiceNo: nextInvoiceNo,
+    quotationNo: quotation.quoteNo,
+    quotationId: quotation.id,
+    createdAt: new Date().toISOString(),
+    customer: quotation.customer,
+    subject: quotation.subject,
+    items: quotation.items,
+    subtotal: quotation.subtotal,
+    discountPercentage: quotation.discountPercentage,
+    discountAmount: quotation.discountAmount,
+    netTotal: quotation.netTotal,
+    vatAmount: quotation.vatAmount,
+    grandTotal: quotation.grandTotal,
+    status: 'Approved', // Starts in approved when converted from an approved quote
+    salesperson: quotation.salesperson,
+    preparedBy: quotation.preparedBy,
+    paymentStatus: 'Unpaid',
+    paidAmount: 0,
+    outstandingBalance: quotation.grandTotal
+  };
+
+  const invoiceId = await saveSalesInvoice(invoiceData);
+
+  // Update Quotation Status to 'Converted to Invoice'
+  await updateDoc(doc(db, 'quotations', quotation.id), {
+    status: 'Converted to Invoice',
+    invoiceNo: nextInvoiceNo,
+    invoiceId: invoiceId
+  });
+
+  await logActivity('Converted Quotation to Invoice', 'Quotation', quotation.id, `Converted quotation ${quotation.quoteNo} to invoice ${nextInvoiceNo}`);
+
+  return invoiceId;
+};
+
 

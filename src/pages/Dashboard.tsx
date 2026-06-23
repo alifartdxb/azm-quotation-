@@ -68,6 +68,24 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
+      {/* Quick Actions */}
+      <div className="flex flex-wrap gap-3">
+        <button 
+          onClick={() => window.location.href = '/quotations/new'}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-semibold transition-all shadow-sm active:scale-95"
+        >
+          <FileText className="w-4 h-4" />
+          <span>New Quotation</span>
+        </button>
+        <button 
+          onClick={() => window.location.href = '/invoices/new'}
+          className="bg-[#1B6B72] hover:bg-[#16565c] text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-semibold transition-all shadow-sm active:scale-95"
+        >
+          <ShoppingCart className="w-4 h-4" />
+          <span>New Invoice</span>
+        </button>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {statCards.map((stat) => (
           <div key={stat.name} className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between group overflow-hidden relative">

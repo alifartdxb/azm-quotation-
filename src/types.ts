@@ -147,3 +147,43 @@ export interface WhatsAppCampaign {
   createdAt: string;
 }
 
+export interface SalesInvoice {
+  id: string;
+  invoiceNo: string;
+  quotationNo?: string;
+  quotationId?: string;
+  createdAt: string;
+  customer: Customer;
+  subject?: string;
+  items: QuoteItem[];
+  subtotal: number;
+  discountPercentage?: number;
+  discountAmount?: number;
+  netTotal?: number;
+  vatAmount: number;
+  grandTotal: number;
+  status: 'Draft' | 'Pending Approval' | 'Approved' | 'Converted to Invoice' | 'Invoice Sent' | 'Partially Paid' | 'Paid' | 'Cancelled' | string;
+  salesperson: string;
+  preparedBy?: string;
+  
+  // Payment Tracking fields
+  paymentStatus: 'Unpaid' | 'Partially Paid' | 'Paid';
+  paymentDate?: string;
+  paymentMethod?: string;
+  chequeNo?: string;
+  referenceNo?: string;
+  outstandingBalance: number;
+  paidAmount: number;
+  remarks?: string;
+}
+
+export interface InvoiceDashboardStats {
+  totalInvoicesCount: number;
+  pendingPaymentCount: number;
+  partiallyPaidCount: number;
+  paidCount: number;
+  outstandingAmount: number;
+  monthlyRevenue: Record<string, number>;
+}
+
+

@@ -9,7 +9,7 @@ import { formatCurrency, parseDate, cleanFirestoreData } from '../lib/utils';
 import { format } from 'date-fns';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { getProducts, getQuotation, db, generateNextQuotationNumber, logActivity, getAppSettings, syncQuotationCustomerToCrm } from '../lib/firebase';
+import { getProducts, getQuotation, db, generateNextQuotationNumber, logActivity, getAppSettings, syncQuotationCustomerToCrm, convertQuotationToSalesInvoice } from '../lib/firebase';
 import { collection, addDoc, updateDoc, doc } from 'firebase/firestore';
 
 function QuotationBuilder() {
@@ -20,6 +20,7 @@ function QuotationBuilder() {
   
   const [isEditing, setIsEditing] = useState(!id);
   const [isSaving, setIsSaving] = useState(false);
+  const [isConverting, setIsConverting] = useState(false);
 
   const [quote, setQuote] = useState<Partial<Quotation>>({
     customer: {
@@ -709,6 +710,11 @@ function QuotationBuilder() {
             throw new Error(`Step 4 (Load quotation document) failed: ${err.message || err}`);
           }
           if (q) {
+            const sanitizedItems = (q.items || []).map((item: any) => ({
+              ...item,
+              id: item.id || uuidv4()
+            }));
+
             setQuote({
               customer: q.customer || {
                 customerName: '',
@@ -724,7 +730,7 @@ function QuotationBuilder() {
               },
               validityDays: q.validityDays || 10,
               subject: q.subject || '',
-              items: q.items || [],
+              items: sanitizedItems,
               status: q.status || 'Draft',
               salesperson: q.salesperson || 'Sabeer',
               preparedBy: q.preparedBy || 'Ali G',
@@ -934,6 +940,31 @@ function QuotationBuilder() {
     }
   };
 
+  const handleConvertToInvoice = async () => {
+    if (!quote || !quote.id) {
+      alert("Error: Quotation is not saved yet.");
+      return;
+    }
+    if (quote.status !== 'Approved') {
+      alert("Only Approved quotations can be converted to Invoices.");
+      return;
+    }
+    setIsConverting(true);
+    try {
+      const invoiceId = await convertQuotationToSalesInvoice(quote as Quotation);
+      alert(`Successfully converted approved quotation to Sales Invoice!`);
+      // Update state
+      setQuote(prev => ({ ...prev, status: 'Converted to Invoice' }));
+      // Navigate to the newly created Sales Invoice!
+      navigate(`/invoices/${invoiceId}`);
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || "Failed to convert quotation to invoice");
+    } finally {
+      setIsConverting(false);
+    }
+  };
+
   if (loadingPhase !== 'done') {
     return (
       <div className="min-h-[400px] flex flex-col items-center justify-center p-8 bg-white rounded-2xl border border-slate-200 shadow-sm max-w-md mx-auto my-12">
@@ -1017,6 +1048,15 @@ function QuotationBuilder() {
           
           {id && !isEditing && (
             <>
+              {quote.status === 'Approved' && (
+                <button 
+                  disabled={isConverting}
+                  onClick={handleConvertToInvoice}
+                  className="bg-[#1A3A5C] hover:bg-[#122840] text-[#C9A96E] border border-[#C9A96E]/40 px-5 py-2 rounded-lg flex items-center gap-2 text-sm font-semibold transition-all shadow-sm active:scale-95 disabled:opacity-50"
+                >
+                  <span>{isConverting ? 'Converting...' : 'Convert to Invoice'}</span>
+                </button>
+              )}
               <button 
                 onClick={() => {
                   let baseMsg = '';
@@ -1152,7 +1192,7 @@ function QuotationBuilder() {
                   </thead>
                   <tbody className="divide-y divide-slate-100 border-b border-slate-100">
                     {quote.items?.map((item, idx) => (
-                      <tr key={item.id} className="hover:bg-slate-50/50">
+                      <tr key={item.id || `quote-item-${idx}`} className="hover:bg-slate-50/50">
                         <td className="py-3 px-4">
                            {item.productId === 'MANUAL' ? (
                              <div className="flex flex-col gap-2">
@@ -1214,7 +1254,7 @@ function QuotationBuilder() {
                       </tr>
                     ))}
                     {quote.items?.length === 0 && (
-                      <tr>
+                      <tr key="empty-state">
                         <td colSpan={6} className="py-8 text-center text-slate-500 text-sm bg-slate-50/50">
                           No items added yet. Click "Add Product" or "Add Manual Item" to begin.
                         </td>

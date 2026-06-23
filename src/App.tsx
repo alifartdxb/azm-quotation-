@@ -4,6 +4,8 @@ import Dashboard from './pages/Dashboard';
 import Products from './pages/Products';
 import Quotations from './pages/Quotations';
 import QuotationBuilder from './pages/QuotationBuilder';
+import Invoices from './pages/Invoices';
+import InvoiceBuilder from './pages/InvoiceBuilder';
 import Login from './pages/Login';
 import Settings from './pages/Settings';
 import AuditLogs from './pages/AuditLogs';
@@ -29,6 +31,8 @@ export default function App() {
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="products" element={<Products />} />
             <Route path="quotations" element={<Quotations />} />
+            <Route path="invoices" element={<Invoices />} />
+            <Route path="invoices/:id" element={<InvoiceBuilder />} />
             <Route path="profile" element={<Profile />} />
             <Route path="customers" element={<Customers />} />
             <Route path="whatsapp-marketing" element={<WhatsAppMarketing />} />

@@ -1,5 +1,5 @@
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Users, Package, FileText, Settings, LogOut, Menu, Search, Plus, Bell, Activity, User, MessageSquare } from "lucide-react";
+import { LayoutDashboard, Users, Package, FileText, Settings, LogOut, Menu, Search, Plus, Bell, Activity, User, MessageSquare, Receipt } from "lucide-react";
 import { useState } from "react";
 import { cn } from "../lib/utils";
 import { useAuth } from "../contexts/AuthContext";
@@ -22,6 +22,7 @@ export default function Layout() {
   const navItems = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { name: 'Quotations', path: '/quotations', icon: FileText },
+    { name: 'Sales Invoices', path: '/invoices', icon: Receipt },
     { name: 'Products', path: '/products', icon: Package },
     { name: 'Customer Database', path: '/customers', icon: Users },
     { name: 'WhatsApp Marketing', path: '/whatsapp-marketing', icon: MessageSquare },
@@ -118,10 +119,18 @@ export default function Layout() {
           </div>
           <div className="flex items-center gap-3">
             {['SUPER_ADMIN', 'SALES_MANAGER', 'SALES_EXECUTIVE'].includes(user?.role || '') && (
-              <Link to="/quotations/new" className="hidden sm:flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-sm hover:bg-blue-700 active:scale-95 transition-all">
-                <Plus className="w-4 h-4" />
-                New Quotation
-              </Link>
+              <>
+                <Link to="/quotations/new" className="flex items-center gap-1 sm:gap-2 bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold shadow-sm hover:bg-blue-700 active:scale-95 transition-all">
+                  <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  <span className="hidden sm:inline">New Quotation</span>
+                  <span className="sm:hidden">Quote</span>
+                </Link>
+                <Link to="/invoices/new" className="flex items-center gap-1 sm:gap-2 bg-[#1B6B72] text-white px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold shadow-sm hover:bg-[#16565c] active:scale-95 transition-all">
+                  <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  <span className="hidden sm:inline">New Invoice</span>
+                  <span className="sm:hidden">Invoice</span>
+                </Link>
+              </>
             )}
             <div className="w-px h-8 bg-slate-200 mx-1 sm:mx-2 hidden sm:block"></div>
             <button className="p-2 text-slate-400 hover:text-slate-600 focus:outline-none">
