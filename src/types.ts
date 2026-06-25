@@ -89,6 +89,9 @@ export interface AppSettings {
   whatsappTemplate: string;
   quotationPrefix: string;
   quotationNextNumber: number;
+  invoicePrefix?: string;
+  vatPercentage?: number;
+  defaultValidity?: number;
   headerImage?: string;
   footerImage?: string;
   companyStamp?: string;

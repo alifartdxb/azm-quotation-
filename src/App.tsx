@@ -32,7 +32,17 @@ export default function App() {
             <Route path="products" element={<Products />} />
             <Route path="quotations" element={<Quotations />} />
             <Route path="invoices" element={<Invoices />} />
+            <Route path="invoices/new" element={
+              <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'SALES_MANAGER', 'SALES_EXECUTIVE']}>
+                <InvoiceBuilder />
+              </ProtectedRoute>
+            } />
             <Route path="invoices/:id" element={<InvoiceBuilder />} />
+            <Route path="invoices/edit/:id" element={
+              <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'SALES_MANAGER', 'SALES_EXECUTIVE']}>
+                <InvoiceBuilder />
+              </ProtectedRoute>
+            } />
             <Route path="profile" element={<Profile />} />
             <Route path="customers" element={<Customers />} />
             <Route path="whatsapp-marketing" element={<WhatsAppMarketing />} />

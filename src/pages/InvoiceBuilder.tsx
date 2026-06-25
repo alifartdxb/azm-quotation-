@@ -83,6 +83,17 @@ function InvoiceBuilder() {
             alert("Location payload: Invoice not found.");
             navigate('/invoices');
           }
+        } else {
+          try {
+            const nextInvoiceNo = await generateNextInvoiceNumber();
+            setInvoice(prev => ({
+              ...prev,
+              invoiceNo: nextInvoiceNo,
+              invoiceDate: new Date().toISOString()
+            }));
+          } catch(err) {
+            console.error("Failed to generate next invoice number:", err);
+          }
         }
         setLoadingPhase('done');
       } catch (err) {

@@ -36,7 +36,7 @@ export const logActivity = async (action: string, entityType: AuditLog['entityTy
 };
 
 export const getAppSettings = async (): Promise<AppSettings> => {
-  const docs = ['company', 'bank', 'templates', 'whatsapp', 'quotation', 'branding'];
+  const docs = ['company', 'bank', 'templates', 'whatsapp', 'quotation', 'branding', 'invoice'];
   const results = await Promise.allSettled(
     docs.map(name => getDoc(doc(db, 'settings', name)))
   );
@@ -76,6 +76,12 @@ export const getAppSettings = async (): Promise<AppSettings> => {
     showStampInPreview: true,
     showStampOnLastPageOnly: true
   };
+
+  const invoiceDefaults = {
+    invoicePrefix: "INV",
+    vatPercentage: 5,
+    defaultValidity: 30
+  };
   
   results.forEach((res, idx) => {
     const name = docs[idx];
@@ -95,6 +101,7 @@ export const getAppSettings = async (): Promise<AppSettings> => {
       if (name === 'whatsapp') Object.assign(merged, whatsappDefaults);
       if (name === 'quotation') Object.assign(merged, quotationDefaults);
       if (name === 'branding') Object.assign(merged, brandingDefaults);
+      if (name === 'invoice') Object.assign(merged, invoiceDefaults);
     }
   });
   
