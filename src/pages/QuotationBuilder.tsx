@@ -410,9 +410,9 @@ function QuotationBuilder() {
         startY: headFinalY,
         margin: { left: 8, right: 8, top: tablesStartY, bottom: bottomMargin },
         theme: 'grid',
-        styles: { valign: 'middle', fontSize: 8.5, cellPadding: 3, font: 'helvetica', textColor: [15, 23, 42] },
-        headStyles: { fillColor: [80, 154, 163], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center', lineWidth: 0.1, lineColor: [203, 213, 225] },
-        bodyStyles: { minCellHeight: 16, lineColor: [203, 213, 225], lineWidth: 0.1 },
+        styles: { valign: 'middle', fontSize: 8.5, cellPadding: 1.5, font: 'helvetica', textColor: [15, 23, 42] },
+        headStyles: { fillColor: [80, 154, 163], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center', lineWidth: 0.1, lineColor: [203, 213, 225], minCellHeight: 10 },
+        bodyStyles: { minCellHeight: 10, lineColor: [203, 213, 225], lineWidth: 0.1 },
         columnStyles: {
           0: { cellWidth: 13.58, halign: 'center' }, // Sr. No. (7%)
           1: { cellWidth: 58.20, halign: 'left' },   // Item Description (30%)
@@ -450,7 +450,7 @@ function QuotationBuilder() {
 
       // Determine bottom position and page breaks for signature areas
       let finalY = (pdf as any).lastAutoTable.finalY || 106;
-      const requiredFooterHeight = 85;
+      const requiredFooterHeight = 65;
       
       if (finalY + requiredFooterHeight > 297 - bottomMargin) {
         pdf.addPage();
@@ -459,13 +459,13 @@ function QuotationBuilder() {
         finalY = tablesStartY;
       }
 
-      const footerStartY = finalY + 0.5;
+      const footerStartY = finalY;
 
       // Draw Bank Details block on the left
       pdf.setFillColor(248, 250, 252);
       pdf.rect(8, footerStartY, 123.86, 28, 'F');
-      pdf.setDrawColor(226, 232, 240);
-      pdf.setLineWidth(0.25);
+      pdf.setDrawColor(203, 213, 225); // Match table border color
+      pdf.setLineWidth(0.1); // Match table border width
       pdf.rect(8, footerStartY, 123.86, 28, 'D');
 
       pdf.setTextColor(15, 23, 42);

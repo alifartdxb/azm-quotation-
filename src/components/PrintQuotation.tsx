@@ -34,7 +34,7 @@ const partitionItems = (items: QuoteItem[]): PageData[] => {
   //   - Page 1: fits up to 5 items (since it contains the main Letterhead Header + Customer Meta Tables)
   //   - Page Middle: fits up to 8 items (only containing running header)
   //   - Page Last: fits up to 4 items (leaving enough room for bank details, totals table, signatures, stamps, brands)
-  if (items.length <= 3) {
+  if (items.length <= 10) {
     return [{
       items,
       pageIndex: 1,
@@ -48,7 +48,7 @@ const partitionItems = (items: QuoteItem[]): PageData[] => {
   let pageNum = 1;
 
   // First page layout
-  const firstPageItems = currentItems.splice(0, 5);
+  const firstPageItems = currentItems.splice(0, 10);
   pages.push({
     items: firstPageItems,
     pageIndex: pageNum++,
@@ -58,15 +58,15 @@ const partitionItems = (items: QuoteItem[]): PageData[] => {
 
   // Middle/Last page layout
   while (currentItems.length > 0) {
-    if (currentItems.length <= 4) {
+    if (currentItems.length <= 12) {
       pages.push({
-        items: currentItems.splice(0, 4),
+        items: currentItems.splice(0, 12),
         pageIndex: pageNum++,
         isFirst: false,
         isLast: true
       });
     } else {
-      const takeCount = Math.min(8, currentItems.length);
+      const takeCount = Math.min(15, currentItems.length);
       const chunk = currentItems.splice(0, takeCount);
       pages.push({
         items: chunk,
@@ -282,7 +282,7 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
                             <img
                               src={imgUrl}
                               alt={item.product?.sku || 'Item'}
-                              className="w-10 h-10 object-contain m-auto"
+                              className="w-8 h-8 object-contain m-auto"
                               referrerPolicy="no-referrer"
                             />
                           ) : (

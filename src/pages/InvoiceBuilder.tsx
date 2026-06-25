@@ -11,6 +11,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { getProducts, getSalesInvoice, saveSalesInvoice, generateNextInvoiceNumber, logActivity, getAppSettings } from '../lib/firebase';
 import { collection, addDoc, updateDoc, doc } from 'firebase/firestore';
+import { SmartProductSelect } from '../components/SmartProductSelect';
 
 function InvoiceBuilder() {
   const { id } = useParams();
@@ -197,37 +198,429 @@ function InvoiceBuilder() {
     setIsDownloadingPdf(true);
     try {
       const preloaded: Record<string, string> = {};
-      const imagePromises = (invoice.items || []).map(async (item) => {
-        if (item.product?.image) {
-          const b64 = await convertImgToBase64(item.product.image);
-          if (b64) {
-            preloaded[item.product.sku || item.id] = b64;
+      
+      // Load optional images like stamp, logo, if needed. (QuotationBuilder handles this via addPdfImage gracefully)
+
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      const safeCustomer = invoice.customer || {
+        customerName: '',
+        companyName: '',
+        contactPerson: '',
+        mobile: '',
+        email: '',
+        trn: '',
+        projectName: '',
+        siteLocation: '',
+        address: '',
+        reference: ''
+      };
+
+      const safeItems = invoice.items || [];
+      const safeSubtotal = invoice.subtotal || 0;
+      const safeVatAmount = invoice.vatAmount || 0;
+      const safeGrandTotal = invoice.grandTotal || 0;
+      const safeInvoiceNo = invoice.invoiceNo || 'Draft';
+      const safeSalesperson = invoice.salesperson || 'Sabeer';
+      const safeDueDate = invoice.createdAt ? format(new Date(new Date(invoice.createdAt).getTime() + (appSettings?.defaultValidity || 30) * 24 * 60 * 60 * 1000), 'dd MMM yyyy') : 'Current Date';
+      const safeSubject = invoice.subject || '';
+      const safePaymentStatus = invoice.paymentStatus || 'Unpaid';
+
+      const totalPagesExp = '{total_pages_count_string}';
+
+      const addPdfImage = (doc: any, dataUrl: string, x: number, y: number, w: number, h?: number) => {
+        try {
+          if (!dataUrl) return;
+          const typeMatch = dataUrl.match(/^data:image\/(png|jpeg|jpg|webp);base64,/i);
+          let formatStr = 'JPEG';
+          if (typeMatch && typeMatch[1]) {
+             formatStr = typeMatch[1].toUpperCase();
+             if (formatStr === 'JPG') formatStr = 'JPEG';
+          }
+          
+          let drawHeight = h;
+          if (!drawHeight) {
+             const props = doc.getImageProperties(dataUrl);
+             drawHeight = (w / props.width) * props.height;
+          }
+          
+          doc.addImage(dataUrl, formatStr, x, y, w, drawHeight);
+        } catch (e) {
+          console.warn("PDF AddImage failed", e);
+        }
+      };
+
+      let headerHeight = 28;
+      if (appSettings?.headerImage) {
+          const props = pdf.getImageProperties(appSettings.headerImage);
+          headerHeight = (194 / props.width) * props.height;
+      }
+      
+      let footerHeight = 16;
+      if (appSettings?.footerImage) {
+          const props = pdf.getImageProperties(appSettings.footerImage);
+          footerHeight = (194 / props.width) * props.height;
+      }
+
+      const drawHeaderAndFooter = (pageNum: number) => {
+        // --- HEADER ---
+        if (appSettings?.headerImage) {
+          addPdfImage(pdf, appSettings.headerImage, 8, 0, 194, headerHeight);
+        } else {
+          pdf.setFillColor(233, 243, 246);
+          pdf.rect(8, 5, 194, 18, 'F'); 
+
+          const companyEn = appSettings?.companyNameEn || 'Al Zahra Al Malakia\nBuilding Materials Trading L.L.C';
+          const parts = companyEn.split('\n');
+          
+          pdf.setTextColor(83, 144, 154);
+          pdf.setFont('helvetica', 'bold');
+          pdf.setFontSize(16);
+          pdf.text(parts[0] || "Al Zahra Al Malakia", 12, 12);
+          pdf.setTextColor(60, 120, 130);
+          pdf.setFont('helvetica', 'normal');
+          pdf.setFontSize(9);
+          pdf.text(parts[1] || "Building Materials Trading L.L.C", 12, 18);
+
+          pdf.setFillColor(255, 255, 255);
+          pdf.setDrawColor(83, 144, 154);
+          pdf.setLineWidth(0.5);
+          
+          pdf.rect(98, 4, 14, 20, 'FD'); 
+          pdf.setTextColor(26, 58, 92);
+          pdf.setFontSize(11);
+          pdf.setFont('helvetica', 'bold');
+          pdf.text("AZM", 105, 15, { align: 'center' });
+
+          pdf.setTextColor(83, 144, 154);
+          pdf.setFont('helvetica', 'bold');
+          pdf.setFontSize(14);
+          const companyAr = appSettings?.companyNameAr || 'الزهرة الملكية\nلتجارة مواد البناء ذ.م.م';
+          const partsAr = companyAr.split('\n');
+          
+          pdf.text(partsAr[0] || "الزهرة الملكية", 192, 12, { align: 'right' });
+          pdf.setTextColor(60, 120, 130);
+          pdf.setFontSize(9);
+          pdf.setFont('helvetica', 'normal');
+          pdf.text(partsAr[1] || "لتجارة مواد البناء ذ.م.م", 192, 18, { align: 'right' });
+
+          pdf.setTextColor(83, 144, 154);
+          pdf.setFontSize(8.5);
+          pdf.setFont('helvetica', 'normal');
+          
+          const phone = appSettings?.phone || '+971 4 28 444 52';
+          const address = appSettings?.address || 'Shop No. 12, Building Materials Mall, Dubai, U.A.E';
+          
+          pdf.text(`Tel: ${phone}  |  Add.: ${address}  |  Email: office@alzahrabm.com`, 105, 29, { align: 'center' });
+        }
+
+        // --- FOOTER ---
+        const pageHeight = 297;
+        const bannerStartY = pageHeight - 12;
+        
+        if (appSettings?.footerImage) {
+          addPdfImage(pdf, appSettings.footerImage, 8, pageHeight - footerHeight, 194, footerHeight);
+          
+          pdf.setTextColor(150, 150, 150);
+          pdf.setFontSize(8);
+          pdf.setFont('helvetica', 'normal');
+          pdf.text(`Page ${pageNum} of ${totalPagesExp}`, 105, pageHeight - 3, { align: 'center' });
+        } else {
+          pdf.setFontSize(10);
+          pdf.setFont('helvetica', 'bold');
+          pdf.setTextColor(30, 58, 138);
+
+          const brands = ["VADO", "Jaquar", "ITALIAN STANDARDS", "NOURK", "SANIT", "KLUDI RAK", "SONET"];
+          const spacing = 194 / (brands.length - 1);
+          brands.forEach((brand, idx) => {
+            pdf.text(brand, 8 + idx * spacing, pageHeight - 17, { align: idx === 0 ? 'left' : idx === brands.length - 1 ? 'right' : 'center' });
+          });
+
+          pdf.setFillColor(83, 144, 154); // Teal
+          pdf.rect(0, bannerStartY, 70, 12, 'F');
+          pdf.setFillColor(26, 58, 92); // Navy
+          pdf.rect(70, bannerStartY, 140, 12, 'F');
+          
+          pdf.setFillColor(26, 58, 92);
+          pdf.triangle(63, bannerStartY + 12, 70, bannerStartY, 70, bannerStartY + 12, 'F');
+
+          pdf.setTextColor(255, 255, 255);
+          pdf.setFontSize(9);
+          pdf.setFont('helvetica', 'bold');
+          pdf.text("www.alzahrabm.com", 15, bannerStartY + 7.5);
+          pdf.text("Empowering Projects. Shaping spaces.", 195, bannerStartY + 7.5, { align: 'right' });
+          
+          pdf.setTextColor(255, 255, 255);
+          pdf.setFontSize(8);
+          pdf.setFont('helvetica', 'normal');
+          pdf.text(`Page ${pageNum} of ${totalPagesExp}`, 105, bannerStartY + 7.5, { align: 'center' });
+        }
+      };
+
+      let currentPage = 1;
+      drawHeaderAndFooter(currentPage);
+
+      const tablesStartY = appSettings?.headerImage ? headerHeight + 5 : 35;
+
+      // Draw Left Info table (CUSTOMER INFORMATION)
+      autoTable(pdf, {
+        startY: tablesStartY,
+        margin: { left: 8 },
+        tableWidth: 95,
+        theme: 'grid',
+        styles: { fontSize: 8.8, cellPadding: { top: 1.5, bottom: 1.5, left: 4, right: 4 }, font: 'helvetica', textColor: [15, 23, 42] },
+        headStyles: { fontSize: 11, fillColor: [80, 158, 159], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' }, // Teal
+        columnStyles: {
+          0: { cellWidth: 35, fontStyle: 'bold', fillColor: [248, 250, 252] },
+          1: { cellWidth: 'auto', textColor: [15, 23, 42] }
+        },
+        head: [[{ content: 'CUSTOMER INFORMATION', colSpan: 2 }]],
+        body: [
+          [
+            'Customer Name:', 
+            { content: safeCustomer.companyName || safeCustomer.customerName || '-', styles: { fontStyle: 'bold', textColor: [15, 23, 42] } }
+          ],
+          ['Contact No.:', safeCustomer.mobile || '-'],
+          ['Address:', safeCustomer.address || '-'],
+          ['L.P.O NO.', safeCustomer.reference || '-'],
+          ['Subject:', safeSubject || '-'],
+          ['Customer TRN:', safeCustomer.trn || '-']
+        ]
+      });
+
+      // Draw Right Info table (TAX INVOICE)
+      autoTable(pdf, {
+        startY: tablesStartY,
+        margin: { left: 107 },
+        tableWidth: 95,
+        theme: 'grid',
+        styles: { fontSize: 8.8, cellPadding: { top: 1.5, bottom: 1.5, left: 4, right: 4 }, font: 'helvetica', textColor: [15, 23, 42] },
+        headStyles: { fontSize: 11, fillColor: [80, 158, 159], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' }, // Teal
+        columnStyles: {
+          0: { cellWidth: 28, fontStyle: 'bold', fillColor: [248, 250, 252] },
+          1: { cellWidth: 'auto', textColor: [15, 23, 42] }
+        },
+        head: [[{ content: 'TAX INVOICE', colSpan: 2 }]],
+        body: [
+          [
+            { content: 'No.:', styles: { fontSize: 8.8, fontStyle: 'bold', textColor: [26, 58, 92] } },
+            { content: safeInvoiceNo, styles: { fontSize: 10.2, fontStyle: 'bold', textColor: [26, 58, 92] } }
+          ],
+          ['Date:', invoice.createdAt ? format(parseDate(invoice.createdAt), 'dd MMM yyyy') : format(new Date(), 'dd MMM yyyy')],
+          ['Due Date:', safeDueDate],
+          ['TRN:', appSettings?.trn || '1002 5994 2900 003'],
+          ['Salesperson:', safeSalesperson],
+          ['Payment Status:', safePaymentStatus]
+        ]
+      });
+
+      const tableRows = safeItems.map((item, index) => {
+        let itemDesc = '';
+        if (item.productId === 'MANUAL') {
+          itemDesc = item.product?.name || 'Manual Item';
+        } else {
+          itemDesc = `${item.product?.sku || ''}\n${item.product?.name || ''}`;
+        }
+        
+        return [
+          index + 1,
+          itemDesc,
+          item.qty || 0,
+          item.product?.unit || 'Pcs',
+          formatCurrency(item.unitPrice || 0),
+          formatCurrency(item.total || 0)
+        ];
+      });
+
+      const headFinalY = (pdf as any).lastAutoTable.finalY + 8;
+      const bottomMargin = appSettings?.footerImage ? footerHeight + 5 : 20;
+
+      // Draw Main Items table
+      autoTable(pdf, {
+        startY: headFinalY,
+        margin: { left: 8, right: 8, top: tablesStartY, bottom: bottomMargin },
+        theme: 'grid',
+        styles: { valign: 'middle', fontSize: 8.5, cellPadding: 1.5, font: 'helvetica', textColor: [15, 23, 42] },
+        headStyles: { fillColor: [80, 158, 159], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center', lineWidth: 0.1, lineColor: [203, 213, 225], minCellHeight: 10 },
+        bodyStyles: { minCellHeight: 10, lineColor: [203, 213, 225], lineWidth: 0.1 },
+        columnStyles: {
+          0: { cellWidth: 13.58, halign: 'center' }, // Sr. No. (7%)
+          1: { cellWidth: 90, halign: 'left' },      // Item Description (~46%)
+          2: { cellWidth: 16.40, halign: 'center' }, // Quantity (10%)
+          3: { cellWidth: 16.40, halign: 'center' }, // Unit (10%)
+          4: { cellWidth: 27.16, halign: 'right' },  // Unit Price (14%)
+          5: { cellWidth: 30.46, halign: 'right' }   // Total Amount (17%)
+        },
+        head: [
+          ['Sr. No.', 'Item Description', 'Qty', 'Unit', 'Unit Price\n(AED)', 'Total Amount\n(AED)']
+        ],
+        body: tableRows,
+        didDrawPage: (data: any) => {
+          if (data.pageNumber > 1) {
+            drawHeaderAndFooter(data.pageNumber);
+          }
+          currentPage = data.pageNumber;
+        }
+      });
+
+      // Determine bottom position and page breaks for signature areas
+      let finalY = (pdf as any).lastAutoTable.finalY || 106;
+      const requiredFooterHeight = 65; // Reduced required height since bank details attach
+      
+      if (finalY + requiredFooterHeight > 297 - bottomMargin) {
+        pdf.addPage();
+        currentPage++;
+        drawHeaderAndFooter(currentPage);
+        finalY = tablesStartY;
+      }
+
+      const footerStartY = finalY;
+
+      // Draw Bank Details block on the left
+      pdf.setFillColor(255, 255, 255);
+      pdf.rect(8, footerStartY, 123.86, 28, 'F');
+      pdf.setDrawColor(203, 213, 225); // Match table border color
+      pdf.setLineWidth(0.1); // Match table line width
+      pdf.rect(8, footerStartY, 123.86, 28, 'D');
+
+      pdf.setTextColor(15, 23, 42);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(8.5);
+      pdf.text("Bank Details:", 12, footerStartY + 6);
+
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(7.5);
+      pdf.setTextColor(15, 23, 42);
+      pdf.text("Bank Name:", 12, footerStartY + 11);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(appSettings?.bankName || "National Bank Of Ras Al Khaimah", 35, footerStartY + 11);
+
+      pdf.setFont('helvetica', 'normal');
+      pdf.text("Account Name:", 12, footerStartY + 15);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(appSettings?.accountName || "Al Zahra Al Malakia Building Materials Trading L.L.C.", 35, footerStartY + 15);
+
+      pdf.setFont('helvetica', 'normal');
+      pdf.text("Account Number:", 12, footerStartY + 19);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(appSettings?.accountNumber || "83621 5391 5902", 35, footerStartY + 19);
+
+      pdf.setFont('helvetica', 'normal');
+      pdf.text("IBAN Number:", 12, footerStartY + 23);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(appSettings?.iban || "AE39 0400 0083 6215 3915 902", 35, footerStartY + 23);
+
+      // Draw Totals side-table on the right
+      const totalsBody: string[][] = [
+        ['Sub Total', formatCurrency(safeSubtotal)]
+      ];
+      
+      const discountPercentage = invoice.discountPercentage || 0;
+      if (discountPercentage > 0) {
+        totalsBody.push([`Discount (${discountPercentage}%)`, `-${formatCurrency(invoice.discountAmount || 0)}`]);
+        totalsBody.push(['Net Total', formatCurrency(invoice.netTotal || safeSubtotal)]);
+      }
+      
+      totalsBody.push(['VAT 5%', formatCurrency(safeVatAmount)]);
+      totalsBody.push(['Grand Total', formatCurrency(safeGrandTotal)]);
+      
+      const paidAmt = invoice.paidAmount || 0;
+      const outstanding = Math.max(0, safeGrandTotal - paidAmt);
+      totalsBody.push(['Paid Amount', formatCurrency(paidAmt)]);
+      totalsBody.push(['Due Amount', formatCurrency(outstanding)]);
+
+      autoTable(pdf, {
+        startY: footerStartY,
+        margin: { left: 141.86 },
+        tableWidth: 60.14,
+        theme: 'grid',
+        styles: { fontSize: 8, cellPadding: 2, font: 'helvetica' },
+        columnStyles: {
+          0: { cellWidth: 27.16, halign: 'right', fontStyle: 'bold', fillColor: [248, 250, 252], lineColor: [203, 213, 225], lineWidth: 0.1 },
+          1: { cellWidth: 32.98, halign: 'right', fontStyle: 'bold', lineColor: [203, 213, 225], lineWidth: 0.1 }
+        },
+        body: totalsBody,
+        didParseCell: (data: any) => {
+          if (data.row.index === totalsBody.length - 3) { // Grand Total
+            if (data.column.index === 0) {
+              data.cell.styles.fillColor = [80, 158, 159]; // Teal Background
+              data.cell.styles.textColor = [255, 255, 255];
+            } else {
+              data.cell.styles.fillColor = [80, 158, 159]; 
+              data.cell.styles.textColor = [255, 255, 255];
+              data.cell.styles.fontSize = 8.5;
+            }
+          } else if (data.row.index === totalsBody.length - 2) { // Paid Amount
+            if (data.column.index === 0) {
+              data.cell.styles.fillColor = [240, 253, 244]; // Light green bg-green-50
+              data.cell.styles.textColor = [22, 101, 52]; // text-green-800
+            } else {
+              data.cell.styles.fillColor = [240, 253, 244];
+              data.cell.styles.textColor = [22, 101, 52];
+              data.cell.styles.fontStyle = 'bold';
+            }
+          } else if (data.row.index === totalsBody.length - 1) { // Due Amount
+            if (data.column.index === 0) {
+              data.cell.styles.fillColor = [254, 242, 242]; // Light red bg-red-50
+              data.cell.styles.textColor = [185, 28, 28]; // text-red-700
+            } else {
+              data.cell.styles.fillColor = [254, 242, 242];
+              data.cell.styles.textColor = [185, 28, 28];
+              data.cell.styles.fontStyle = 'bold';
+            }
+          } else if (discountPercentage > 0 && data.row.index === 1 && data.column.index === 1) {
+            data.cell.styles.textColor = [5, 150, 105]; // Emerald 600
           }
         }
       });
-      await Promise.allSettled(imagePromises);
-      setPreloadedImages(preloaded);
 
-      // Create PDF
-      const pdf = new jsPDF({ format: 'a4', unit: 'mm' });
-      const pageHeight = pdf.internal.pageSize.height;
-      let totalPagesExp = "{total_pages_count_string}";
+      // Terms & Conditions / Declaration
+      const termsStartY = (pdf as any).lastAutoTable.finalY + 14.0;
 
-      const formatNum = (val: number) => `AED ${val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      pdf.setFontSize(8.5);
+      pdf.setTextColor(15, 23, 42);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text("Declaration", 8, termsStartY);
 
-      // Setup Autotable
-      autoTable(pdf, {
-        html: '#invoice-pdf-render',
-        startY: 20,
-        didDrawPage: (data) => {
-          // Drawing run-time header & footer
-          pdf.setFontSize(8);
-          pdf.text(`Invoice No: ${invoice.invoiceNo}`, 14, 10);
-          pdf.text(`Date: ${format(new Date(), 'yyyy-MM-dd')}`, 170, 10);
-        }
+      const declarationText = appSettings?.invoiceDeclaration || "We declare that this invoice shows the actual price of the goods\ndescribed and that all particulars are true and correct.\nReceived the above goods in good order and condition";
+      
+      pdf.setFontSize(8.5);
+      pdf.setTextColor(15, 23, 42); 
+      
+      let termY = termsStartY + 4;
+      const decLines = declarationText.split('\n');
+      decLines.forEach((line: string) => {
+        pdf.text(line, 8, termY);
+        termY += 4;
       });
 
-      pdf.save(`Invoice_${invoice.invoiceNo}_${invoice.customer?.companyName || 'AZM'}.pdf`);
+      // Signatures
+      const sigY = termY + 25;
+      
+      // Stamp
+      if (appSettings?.companyStamp) {
+         addPdfImage(pdf, appSettings.companyStamp, 140, termY - 5, 45);
+      }
+
+      pdf.setFontSize(9);
+      pdf.setFont('helvetica', 'normal');
+      
+      pdf.setDrawColor(203, 213, 225);
+      pdf.line(10, sigY, 60, sigY);
+      pdf.text("Customer's Signature", 35, sigY + 5, { align: 'center' });
+
+      pdf.line(135, sigY, 195, sigY);
+      pdf.text("Authorised Signature", 165, sigY + 5, { align: 'center' });
+
+      if (typeof pdf.putTotalPages === 'function') {
+        pdf.putTotalPages(totalPagesExp);
+      }
+
+      pdf.save(`Invoice_${invoice.invoiceNo}_${safeCustomer.companyName || 'AZM'}.pdf`);
     } catch (err) {
       console.error(err);
       alert("Error creating PDF");
@@ -552,48 +945,24 @@ function InvoiceBuilder() {
                     {(invoice.items || []).map((item, index) => (
                       <tr key={item.id || `invoice-item-${index}`} className="hover:bg-slate-50/50">
                         <td className="px-4 py-3 space-y-2">
-                          <div className="relative">
-                            <input 
-                              type="text" 
-                              className="w-full border border-slate-200 bg-white rounded-lg p-2 text-sm focus:border-blue-500 outline-none font-semibold text-slate-800"
+                          <div className="space-y-2">
+                            <SmartProductSelect
+                              products={products}
+                              value={item.productId === 'MANUAL' ? null : (products.find(p => p.id === item.productId) || item.product || null)}
+                              onChange={(p) => {
+                                handleItemProductSelect(index, p);
+                                setTimeout(() => {
+                                  document.getElementById(`invoice-qty-${index}`)?.focus();
+                                }, 50);
+                              }}
+                              placeholder="Search warehouse products..."
+                            />
+                            <textarea 
+                              className="w-full border border-slate-200 bg-white rounded-lg p-2 text-sm focus:border-blue-500 outline-none font-semibold text-slate-800 resize-none h-16"
                               value={item.product?.name || ''}
                               onChange={e => handleItemPropertyChange(index, 'name', e.target.value)}
                               placeholder="Product details or custom marble cutting specs"
                             />
-                            {/* Simple dropdown indicator */}
-                            <button 
-                              onClick={() => setShowProductDropdown(showProductDropdown === index ? null : index)}
-                              className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 focus:outline-none"
-                            >
-                              <ChevronDown className="w-4 h-4" />
-                            </button>
-
-                            {showProductDropdown === index && (
-                              <div className="absolute left-0 right-0 z-30 mt-1 bg-white border border-slate-200 shadow-xl rounded-lg max-h-52 overflow-y-auto">
-                                <div className="p-2 border-b border-rose-100 bg-slate-50 sticky top-0">
-                                  <input 
-                                    type="text" 
-                                    className="w-full p-1.5 border border-slate-200 rounded text-xs" 
-                                    placeholder="Search warehouse inventory..."
-                                    value={productSearch}
-                                    onChange={e => setProductSearch(e.target.value)}
-                                  />
-                                </div>
-                                {products
-                                  .filter(p => !productSearch || p.name.toLowerCase().includes(productSearch.toLowerCase()) || p.sku.toLowerCase().includes(productSearch.toLowerCase()))
-                                  .map(p => (
-                                    <div 
-                                      key={p.id} 
-                                      className="p-2 text-xs hover:bg-slate-100 cursor-pointer border-b border-slate-50 flex justify-between font-medium text-slate-700"
-                                      onClick={() => handleItemProductSelect(index, p)}
-                                    >
-                                      <span>{p.sku} - {p.name} ({p.brand})</span>
-                                      <b className="font-mono text-blue-700">AED {p.price}</b>
-                                    </div>
-                                  ))
-                                }
-                              </div>
-                            )}
                           </div>
                           
                           <div className="grid grid-cols-2 gap-2 text-xs">
@@ -631,6 +1000,7 @@ function InvoiceBuilder() {
                         </td>
                         <td className="px-4 py-3">
                           <input 
+                            id={`invoice-qty-${index}`}
                             type="number" 
                             className="w-full border border-slate-200 bg-white rounded-lg p-2 text-sm focus:border-blue-500 outline-none text-center font-mono font-semibold"
                             value={item.qty || 1}
