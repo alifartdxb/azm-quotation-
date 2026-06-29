@@ -178,6 +178,7 @@ export interface SalesInvoice {
   outstandingBalance: number;
   paidAmount: number;
   remarks?: string;
+  convertedFromQuotation?: boolean;
 }
 
 export interface InvoiceDashboardStats {

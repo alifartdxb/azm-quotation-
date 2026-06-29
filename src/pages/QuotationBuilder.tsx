@@ -941,7 +941,7 @@ function QuotationBuilder() {
   };
 
   const handleConvertToInvoice = async () => {
-    if (!quote || !quote.id) {
+    if (!quote || !id) {
       alert("Error: Quotation is not saved yet.");
       return;
     }
@@ -951,12 +951,19 @@ function QuotationBuilder() {
     }
     setIsConverting(true);
     try {
-      const invoiceId = await convertQuotationToSalesInvoice(quote as Quotation);
-      alert(`Successfully converted approved quotation to Sales Invoice!`);
-      // Update state
-      setQuote(prev => ({ ...prev, status: 'Converted to Invoice' }));
-      // Navigate to the newly created Sales Invoice!
-      navigate(`/invoices/${invoiceId}`);
+      const quotationData = { ...quote, id } as Quotation;
+      const result = await convertQuotationToSalesInvoice(quotationData);
+      
+      if (result.existed) {
+        alert("Invoice already created for this quotation.");
+      } else {
+        alert(`Invoice created successfully.`);
+        // Update state
+        setQuote(prev => ({ ...prev, status: 'Converted to Invoice' }));
+      }
+      
+      // Navigate to the Sales Invoice
+      navigate(`/invoices/${result.id}`);
     } catch (err: any) {
       console.error(err);
       alert(err.message || "Failed to convert quotation to invoice");

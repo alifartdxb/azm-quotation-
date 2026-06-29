@@ -577,18 +577,18 @@ export const saveSalesInvoice = async (invoice: Partial<SalesInvoice>): Promise<
   }
 };
 
-export const convertQuotationToSalesInvoice = async (quotation: Quotation): Promise<string> => {
+export const convertQuotationToSalesInvoice = async (quotation: Quotation): Promise<{id: string, existed: boolean}> => {
   // Prevent duplicate conversions if already converted
   const invoices = await getSalesInvoices();
   const alreadyConverted = invoices.find(inv => inv.quotationId === quotation.id);
   if (alreadyConverted) {
-    throw new Error(`Quotation has already been converted to Invoice: ${alreadyConverted.invoiceNo}`);
+    return { id: alreadyConverted.id, existed: true };
   }
 
   // Generate new invoice number
   const nextInvoiceNo = await generateNextInvoiceNumber();
 
-  const invoiceData: Partial<SalesInvoice> = {
+  const invoiceData: Partial<SalesInvoice> & { convertedFromQuotation?: boolean } = {
     invoiceNo: nextInvoiceNo,
     quotationNo: quotation.quoteNo,
     quotationId: quotation.id,
@@ -602,12 +602,13 @@ export const convertQuotationToSalesInvoice = async (quotation: Quotation): Prom
     netTotal: quotation.netTotal,
     vatAmount: quotation.vatAmount,
     grandTotal: quotation.grandTotal,
-    status: 'Approved', // Starts in approved when converted from an approved quote
+    status: 'Unpaid',
     salesperson: quotation.salesperson,
     preparedBy: quotation.preparedBy,
     paymentStatus: 'Unpaid',
     paidAmount: 0,
-    outstandingBalance: quotation.grandTotal
+    outstandingBalance: quotation.grandTotal,
+    convertedFromQuotation: true
   };
 
   const invoiceId = await saveSalesInvoice(invoiceData);
@@ -621,7 +622,7 @@ export const convertQuotationToSalesInvoice = async (quotation: Quotation): Prom
 
   await logActivity('Converted Quotation to Invoice', 'Quotation', quotation.id, `Converted quotation ${quotation.quoteNo} to invoice ${nextInvoiceNo}`);
 
-  return invoiceId;
+  return { id: invoiceId, existed: false };
 };
 
 
