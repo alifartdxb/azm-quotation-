@@ -63,10 +63,10 @@ export default function App() {
               </ProtectedRoute>
             } />
             <Route path="quotations/:id" element={<QuotationBuilder />} />
-            
-            {/* 404 Route */}
-            <Route path="*" element={<NotFound />} />
           </Route>
+
+          {/* 404 Route */}
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>
