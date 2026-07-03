@@ -9,14 +9,17 @@ import { formatCurrency, parseDate, cleanFirestoreData } from '../lib/utils';
 import { format } from 'date-fns';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { getProducts, getQuotation, db, generateNextQuotationNumber, logActivity, getAppSettings, syncQuotationCustomerToCrm, convertQuotationToSalesInvoice } from '../lib/firebase';
+import { getProducts, getQuotation, db, generateNextQuotationNumber, logActivity, getAppSettings, syncQuotationCustomerToCrm, convertQuotationToSalesInvoice, getCrmCustomers } from '../lib/firebase';
 import { collection, addDoc, updateDoc, doc } from 'firebase/firestore';
+import type { CrmCustomer } from '../types';
+import { SmartCustomerSelect } from '../components/SmartCustomerSelect';
 
 function QuotationBuilder() {
   const { id } = useParams();
   const navigate = useNavigate();
   
   const [products, setProducts] = useState<Product[]>([]);
+  const [customers, setCustomers] = useState<CrmCustomer[]>([]);
   
   const [isEditing, setIsEditing] = useState(!id);
   const [isSaving, setIsSaving] = useState(false);
@@ -169,13 +172,15 @@ function QuotationBuilder() {
 
       const safeCustomer = quote.customer || {
         customerName: '',
+        companyName: '',
         contactPerson: '',
         mobile: '',
         email: '',
         trn: '',
         projectName: '',
         siteLocation: '',
-        address: ''
+        address: '',
+        reference: ''
       };
 
       const safeItems = quote.items || [];
@@ -345,14 +350,16 @@ function QuotationBuilder() {
         head: [[{ content: 'CUSTOMER INFORMATION', colSpan: 2 }]],
         body: [
           [
-            'Customer Name:', 
-            { content: safeCustomer.customerName || '-', styles: { fontStyle: 'bold', textColor: [15, 23, 42] } }
+            'Company Name:', 
+            { content: safeCustomer.companyName || safeCustomer.customerName || '-', styles: { fontStyle: 'bold', textColor: [15, 23, 42] } }
           ],
+          ['Contact Name:', safeCustomer.customerName || '-'],
           ['Contact No.:', safeCustomer.mobile || '-'],
           ['Email:', safeCustomer.email || '-'],
           ['Address:', safeCustomer.address || '-'],
           ['Subject:', safeSubject || '-'],
-          ['Customer TRN:', safeCustomer.trn || '-']
+          ['Customer TRN:', safeCustomer.trn || '-'],
+          ['Reference:', safeCustomer.reference || '-']
         ]
       });
 
@@ -699,6 +706,13 @@ function QuotationBuilder() {
           throw new Error(`Step 3 (Load products catalogue) failed: ${err.message || err}`);
         }
         setProducts(prodData || []);
+
+        try {
+          const custData = await getCrmCustomers();
+          setCustomers(custData || []);
+        } catch (err) {
+          console.error("Step 3b (Load customers) failed:", err);
+        }
 
         if (id) {
           setLoadingPhase('quotation');
@@ -1146,6 +1160,28 @@ function QuotationBuilder() {
                <h3 className="text-sm font-bold text-slate-800 uppercase tracking-tight mb-4 border-b border-slate-100 pb-3">Customer Information</h3>
                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                  <div>
+                   <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Company Name</label>
+                   <SmartCustomerSelect 
+                     customers={customers}
+                     value={quote.customer?.companyName || quote.customer?.customerName || ''}
+                     onChange={(companyName, customer) => {
+                       if (customer) {
+                         setQuote({...quote, customer: {
+                           ...quote.customer!,
+                           companyName: customer.companyName || customer.customerName,
+                           customerName: customer.customerName || companyName,
+                           mobile: customer.mobile || '',
+                           email: customer.email || '',
+                           trn: customer.trn || '',
+                           address: customer.address || '',
+                         }});
+                       } else {
+                          setQuote({...quote, customer: {...quote.customer!, companyName, customerName: quote.customer?.customerName || companyName}});
+                       }
+                     }}
+                   />
+                 </div>
+                 <div>
                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Customer Name</label>
                    <input type="text" className="w-full border border-slate-200 bg-slate-50 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                      value={quote.customer?.customerName || ''} onChange={e => setQuote({...quote, customer: {...quote.customer!, customerName: e.target.value}})} />
@@ -1164,6 +1200,11 @@ function QuotationBuilder() {
                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">TRN Number</label>
                    <input type="text" className="w-full border border-slate-200 bg-slate-50 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                      value={quote.customer?.trn || ''} onChange={e => setQuote({...quote, customer: {...quote.customer!, trn: e.target.value}})} />
+                 </div>
+                 <div>
+                   <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Reference</label>
+                   <input type="text" className="w-full border border-slate-200 bg-slate-50 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                     value={quote.customer?.reference || ''} onChange={e => setQuote({...quote, customer: {...quote.customer!, reference: e.target.value}})} placeholder="e.g. PO-1234" />
                  </div>
                  <div className="md:col-span-2 lg:col-span-3">
                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Address</label>

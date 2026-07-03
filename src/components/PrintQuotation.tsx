@@ -179,8 +179,12 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
                       </thead>
                       <tbody className="divide-y divide-gray-300 [&>tr>td]:py-0.25 [&>tr>td]:px-1.5 [&>tr>td]:border-x [&>tr>td]:border-gray-300">
                         <tr>
-                          <td className="w-1/3 font-bold bg-slate-100">Customer Name:</td>
-                          <td className="font-bold text-gray-950">{safeCustomer.customerName}</td>
+                          <td className="w-1/3 font-bold bg-slate-100">Company Name:</td>
+                          <td className="font-bold text-gray-950">{safeCustomer.companyName || safeCustomer.customerName}</td>
+                        </tr>
+                        <tr>
+                          <td className="font-bold bg-slate-100">Contact Name:</td>
+                          <td>{safeCustomer.customerName}</td>
                         </tr>
                         <tr>
                           <td className="font-bold bg-slate-100">Contact No.:</td>
@@ -199,8 +203,12 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
                           <td>{safeSubject}</td>
                         </tr>
                         <tr>
-                          <td className="font-bold bg-slate-100 rounded-bl-sm">Customer TRN:</td>
-                          <td className="rounded-br-sm">{safeCustomer.trn}</td>
+                          <td className="font-bold bg-slate-100">Customer TRN:</td>
+                          <td>{safeCustomer.trn}</td>
+                        </tr>
+                        <tr>
+                          <td className="font-bold bg-slate-100 rounded-bl-sm">Reference:</td>
+                          <td className="rounded-br-sm">{safeCustomer.reference}</td>
                         </tr>
                       </tbody>
                     </table>
