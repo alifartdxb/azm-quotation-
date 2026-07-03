@@ -12,6 +12,7 @@ import AuditLogs from './pages/AuditLogs';
 import Profile from './pages/Profile';
 import Customers from './pages/Customers';
 import WhatsAppMarketing from './pages/WhatsAppMarketing';
+import NotFound from './pages/NotFound';
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -62,6 +63,9 @@ export default function App() {
               </ProtectedRoute>
             } />
             <Route path="quotations/:id" element={<QuotationBuilder />} />
+            
+            {/* 404 Route */}
+            <Route path="*" element={<NotFound />} />
           </Route>
         </Routes>
       </AuthProvider>
