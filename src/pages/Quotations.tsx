@@ -1,17 +1,15 @@
 import { useState, useEffect } from 'react';
 import type { Quotation } from '../types';
-import { Plus, Search, FileText, Trash2, Receipt } from 'lucide-react';
+import { Plus, Search, FileText, Trash2 } from 'lucide-react';
 import { formatCurrency, cn, parseDate } from '../lib/utils';
 import { format } from 'date-fns';
-import { Link, useNavigate } from 'react-router-dom';
-import { getQuotations, deleteQuotation, logActivity, updateQuotationStatus, convertQuotationToSalesInvoice } from '../lib/firebase';
+import { Link } from 'react-router-dom';
+import { getQuotations, deleteQuotation, logActivity, updateQuotationStatus } from '../lib/firebase';
 
 export default function Quotations() {
-  const navigate = useNavigate();
   const [quotations, setQuotations] = useState<Quotation[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
-  const [convertingId, setConvertingId] = useState<string | null>(null);
   
   // Custom Delete Modal States
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -34,28 +32,6 @@ export default function Quotations() {
       alert("Failed to update status. Please try again.");
     } finally {
       setUpdatingStatusId(null);
-    }
-  };
-
-  const handleConvertToInvoiceDirect = async (quote: Quotation) => {
-    if (quote.status !== 'Approved') {
-      alert("Only Approved quotations can be converted to Invoices.");
-      return;
-    }
-    setConvertingId(quote.id);
-    try {
-      const result = await convertQuotationToSalesInvoice(quote);
-      if (result.existed) {
-        alert("Invoice already created for this quotation.");
-      } else {
-        alert(`Successfully converted quotation ${quote.quoteNo} to Sales Invoice!`);
-      }
-      navigate(`/invoices/${result.id}`);
-    } catch (error: any) {
-      console.error("Error converting quotation:", error);
-      alert(error.message || "Failed to convert. Please try again.");
-    } finally {
-      setConvertingId(null);
     }
   };
 
@@ -185,7 +161,6 @@ export default function Quotations() {
                           quote.status === 'Rejected' ? "bg-red-100 text-red-700" :
                           quote.status === 'Sent' ? "bg-blue-100 text-blue-700" :
                           quote.status === 'Converted to Order' ? "bg-purple-100 text-purple-700" :
-                          quote.status === 'Converted to Invoice' ? "bg-indigo-100 text-indigo-700 font-bold" :
                           "bg-slate-100 text-slate-700"
                         )}
                         style={{
@@ -199,33 +174,11 @@ export default function Quotations() {
                         <option value="Approved" className="bg-white text-emerald-700 font-semibold text-xs normal-case">Approved</option>
                         <option value="Rejected" className="bg-white text-red-700 font-semibold text-xs normal-case">Rejected</option>
                         <option value="Converted to Order" className="bg-white text-purple-700 font-semibold text-xs normal-case">Converted to Order</option>
-                        <option value="Converted to Invoice" className="bg-white text-indigo-700 font-semibold text-xs normal-case">Converted to Invoice</option>
                         <option value="Expired" className="bg-white text-rose-700 font-semibold text-xs normal-case">Expired</option>
                       </select>
                     </div>
                   </td>
                   <td className="px-6 py-4 text-right space-x-3">
-                    {quote.status === 'Approved' && (
-                      <button
-                        onClick={() => handleConvertToInvoiceDirect(quote)}
-                        disabled={convertingId === quote.id}
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded-md text-[11px] font-bold transition-all active:scale-95 disabled:opacity-50 inline-flex items-center gap-1 shadow-sm mr-2"
-                        title="Convert this approved quotation to a sales invoice"
-                      >
-                        <Receipt className="w-3.5 h-3.5" />
-                        <span>{convertingId === quote.id ? "Converting..." : "Convert to Invoice"}</span>
-                      </button>
-                    )}
-                    {quote.status === 'Converted to Invoice' && (quote as any).invoiceId && (
-                      <Link
-                        to={`/invoices/${(quote as any).invoiceId}`}
-                        className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-2.5 py-1 rounded-md text-[11px] font-bold transition-all inline-flex items-center gap-1 shadow-sm mr-2"
-                        title="View the converted sales invoice"
-                      >
-                        <Receipt className="w-3.5 h-3.5" />
-                        <span>View Invoice</span>
-                      </Link>
-                    )}
                     <Link to={`/quotations/${quote.id}`} className="text-[11px] text-blue-600 font-semibold hover:underline opacity-0 group-hover:opacity-100 transition-opacity">
                       View / Print
                     </Link>
