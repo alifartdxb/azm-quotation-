@@ -39,7 +39,7 @@ function QuotationBuilder() {
       reference: ''
     },
     validityDays: 10,
-    subject: '',
+    subject: 'Supply of Sanitaryware',
     items: [],
     status: 'Draft',
     salesperson: 'Sabeer',
@@ -776,7 +776,7 @@ function QuotationBuilder() {
               reference: ''
             },
             validityDays: 10,
-            subject: '',
+            subject: 'Supply of Sanitaryware',
             items: [{
               id: uuidv4(),
               productId: '',
@@ -836,7 +836,7 @@ function QuotationBuilder() {
           name: '',
           brand: '',
           price: 0,
-          unit: 'Job',
+          unit: 'Pcs',
           category: 'Manual'
         } as Product,
         qty: 1,
@@ -915,7 +915,7 @@ function QuotationBuilder() {
   };
 
   const handleSave = async () => {
-    if (!quote.customer?.customerName) return alert("Please enter Customer Name");
+    if (!quote.customer?.customerName) return alert("Please enter Contact Person");
     setIsSaving(true);
     
     try {
@@ -1182,7 +1182,7 @@ function QuotationBuilder() {
                    />
                  </div>
                  <div>
-                   <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Customer Name</label>
+                   <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Contact Person</label>
                    <input type="text" className="w-full border border-slate-200 bg-slate-50 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                      value={quote.customer?.customerName || ''} onChange={e => setQuote({...quote, customer: {...quote.customer!, customerName: e.target.value}})} />
                  </div>
