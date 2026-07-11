@@ -1233,6 +1233,7 @@ function QuotationBuilder() {
                     <tr>
                       <th className="px-4 py-3 w-1/3">Product / Description</th>
                       <th className="px-4 py-3">Qty</th>
+                      <th className="px-4 py-3">Unit</th>
                       <th className="px-4 py-3">Unit Price</th>
                       <th className="px-4 py-3 text-right">Total</th>
                       <th className="px-4 py-3"></th>
@@ -1272,20 +1273,24 @@ function QuotationBuilder() {
                            )}
                         </td>
                         <td className="py-3 px-4">
-                          <div className="flex items-center gap-2">
-                            <input 
-                              id={`qty-input-${item.id}`}
-                              type="number" 
-                              min="1" 
-                              className="w-20 border border-slate-200 bg-white rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" 
-                              value={item.qty} 
-                              onChange={e => updateItem(idx, 'qty', Number(e.target.value))} 
-                            />
-                            {item.productId === 'MANUAL' && (
-                              <input type="text" placeholder="Unit" className="w-16 border border-slate-200 bg-white rounded-md p-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" 
-                                value={item.product?.unit || ''} onChange={e => updateItem(idx, 'manualUnit', e.target.value)} />
-                            )}
-                          </div>
+                          <input 
+                            id={`qty-input-${item.id}`}
+                            type="number" 
+                            min="1" 
+                            className="w-20 border border-slate-200 bg-white rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" 
+                            value={item.qty} 
+                            onChange={e => updateItem(idx, 'qty', Number(e.target.value))} 
+                          />
+                        </td>
+                        <td className="py-3 px-4">
+                          {item.productId === 'MANUAL' ? (
+                            <input type="text" placeholder="Unit" className="w-16 border border-slate-200 bg-white rounded-md p-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" 
+                              value={item.product?.unit || ''} onChange={e => updateItem(idx, 'manualUnit', e.target.value)} />
+                          ) : (
+                            <span className="text-slate-600 font-semibold text-sm px-3 py-2 bg-slate-100 rounded-lg">
+                              {item.product?.unit || 'Pcs'}
+                            </span>
+                          )}
                         </td>
                         <td className="py-3 px-4">
                           <input type="number" className="w-28 border border-slate-200 bg-white rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" 
