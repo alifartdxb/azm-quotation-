@@ -28,41 +28,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: User | null) => {
       if (firebaseUser) {
+        setLoading(true);
         // Fetch user role from Firestore
         const docRef = doc(db, 'users', firebaseUser.uid);
-        const docSnap = await getDoc(docRef);
-        
-        let role: Role = 'VIEWER';
-        let name = firebaseUser.email?.split('@')[0] || 'User';
+        try {
+          const docSnap = await getDoc(docRef);
+          
+          let role: Role = 'VIEWER';
+          let name = firebaseUser.email?.split('@')[0] || 'User';
 
-        if (docSnap.exists()) {
-          role = docSnap.data().role as Role;
-          name = docSnap.data().name || name;
-        } else {
-          // Fallback or setup first admin
-           if (firebaseUser.email?.toLowerCase() === 'admin@azmgroup.com' || firebaseUser.email?.toLowerCase() === 'alifartdxb@gmail.com') {
-             role = 'SUPER_ADMIN';
-             name = 'System Admin';
-           }
-           
-           try {
-             await setDoc(docRef, {
-               email: firebaseUser.email,
-               role: role,
-               name: name,
-               createdAt: new Date().toISOString()
-             });
-           } catch (e) {
-             console.error("Could not write user doc on init", e);
-           }
+          if (docSnap.exists()) {
+            role = docSnap.data().role as Role;
+            name = docSnap.data().name || name;
+          } else {
+            // Fallback or setup first admin
+             if (firebaseUser.email?.toLowerCase() === 'admin@azmgroup.com' || firebaseUser.email?.toLowerCase() === 'alifartdxb@gmail.com') {
+               role = 'SUPER_ADMIN';
+               name = 'System Admin';
+             }
+             
+             try {
+               await setDoc(docRef, {
+                 email: firebaseUser.email,
+                 role: role,
+                 name: name,
+                 createdAt: new Date().toISOString()
+               });
+             } catch (e) {
+               console.error("Could not write user doc on init", e);
+             }
+          }
+
+          setUser({
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            role,
+            name,
+          });
+        } catch (err) {
+          console.error("Error retrieving user profile:", err);
+          setUser(null);
         }
-
-        setUser({
-          uid: firebaseUser.uid,
-          email: firebaseUser.email,
-          role,
-          name,
-        });
       } else {
         setUser(null);
       }
@@ -73,7 +79,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    await signInWithEmailAndPassword(auth, email, password);
+    setLoading(true);
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+    } catch (err) {
+      setLoading(false);
+      throw err;
+    }
   };
 
   const signOut = async () => {
@@ -82,7 +94,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider value={{ user, loading, signIn, signOut }}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 }
