@@ -43,7 +43,8 @@ function QuotationBuilder() {
     items: [],
     status: 'Draft',
     salesperson: 'Sabeer',
-    preparedBy: 'Ali G'
+    preparedBy: 'Ali G',
+    deliveryCharges: 0
   });
 
   const printRef = useRef<HTMLDivElement>(null);
@@ -341,25 +342,24 @@ function QuotationBuilder() {
         margin: { left: 8 },
         tableWidth: 95,
         theme: 'grid',
-        styles: { fontSize: 8.8, cellPadding: { top: 1.5, bottom: 1.5, left: 4, right: 4 }, font: 'helvetica', textColor: [15, 23, 42] },
-        headStyles: { fontSize: 11, fillColor: [80, 154, 163], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
+        styles: { fontSize: 8.0, cellPadding: { top: 1.0, bottom: 1.0, left: 3, right: 3 }, font: 'helvetica', textColor: [15, 23, 42] },
+        headStyles: { fontSize: 10, fillColor: [80, 154, 163], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
         columnStyles: {
-          0: { cellWidth: 35, fontStyle: 'bold', fillColor: [248, 250, 252] },
+          0: { cellWidth: 32, fontStyle: 'bold', fillColor: [248, 250, 252] },
           1: { cellWidth: 'auto', textColor: [15, 23, 42] }
         },
         head: [[{ content: 'CUSTOMER INFORMATION', colSpan: 2 }]],
         body: [
           [
-            'Company Name:', 
+            'Customer Name:', 
             { content: safeCustomer.companyName || safeCustomer.customerName || '-', styles: { fontStyle: 'bold', textColor: [15, 23, 42] } }
           ],
-          ['Contact Name:', safeCustomer.customerName || '-'],
+          ['Contact Person:', safeCustomer.customerName || '-'],
           ['Contact No.:', safeCustomer.mobile || '-'],
           ['Email:', safeCustomer.email || '-'],
           ['Address:', safeCustomer.address || '-'],
           ['Subject:', safeSubject || '-'],
-          ['Customer TRN:', safeCustomer.trn || '-'],
-          ['Reference:', safeCustomer.reference || '-']
+          ['Customer TRN:', safeCustomer.trn || '-']
         ]
       });
 
@@ -369,8 +369,8 @@ function QuotationBuilder() {
         margin: { left: 107 },
         tableWidth: 95,
         theme: 'grid',
-        styles: { fontSize: 8.8, cellPadding: { top: 1.5, bottom: 1.5, left: 4, right: 4 }, font: 'helvetica', textColor: [15, 23, 42] },
-        headStyles: { fontSize: 11, fillColor: [80, 154, 163], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
+        styles: { fontSize: 8.0, cellPadding: { top: 1.0, bottom: 1.0, left: 3, right: 3 }, font: 'helvetica', textColor: [15, 23, 42] },
+        headStyles: { fontSize: 10, fillColor: [80, 154, 163], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
         columnStyles: {
           0: { cellWidth: 28, fontStyle: 'bold', fillColor: [248, 250, 252] },
           1: { cellWidth: 'auto', textColor: [15, 23, 42] }
@@ -378,14 +378,15 @@ function QuotationBuilder() {
         head: [[{ content: 'QUOTATION DETAILS', colSpan: 2 }]],
         body: [
           [
-            { content: 'No.:', styles: { fontSize: 8.8, fontStyle: 'bold', textColor: [26, 58, 92] } },
-            { content: safeQuoteNo, styles: { fontSize: 10.2, fontStyle: 'bold', textColor: [26, 58, 92] } }
+            { content: 'No.:', styles: { fontSize: 8.0, fontStyle: 'bold', textColor: [26, 58, 92] } },
+            { content: safeQuoteNo, styles: { fontSize: 9.5, fontStyle: 'bold', textColor: [26, 58, 92] } }
           ],
           ['Date:', format(parseDate(quote.createdAt), 'dd MMM yyyy')],
           ['Validity:', `${safeValidityDays} Days`],
           ['TRN:', appSettings?.trn || '1002 5994 2900 003'],
           ['Salesperson:', safeSalesperson],
-          ['Prepared By:', quote.preparedBy || 'Ali G']
+          ['Prepared By:', quote.preparedBy || 'Ali G'],
+          ['Reference:', safeCustomer.reference || '-']
         ]
       });
 
@@ -408,7 +409,7 @@ function QuotationBuilder() {
         ];
       });
 
-      const headFinalY = (pdf as any).lastAutoTable.finalY + 8;
+      const headFinalY = (pdf as any).lastAutoTable.finalY + 4.0;
 
       const bottomMargin = appSettings?.footerImage ? footerHeight + 5 : 20;
 
@@ -417,9 +418,9 @@ function QuotationBuilder() {
         startY: headFinalY,
         margin: { left: 8, right: 8, top: tablesStartY, bottom: bottomMargin },
         theme: 'grid',
-        styles: { valign: 'middle', fontSize: 8.5, cellPadding: 1.5, font: 'helvetica', textColor: [15, 23, 42] },
-        headStyles: { fillColor: [80, 154, 163], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center', lineWidth: 0.1, lineColor: [203, 213, 225], minCellHeight: 10 },
-        bodyStyles: { minCellHeight: 10, lineColor: [203, 213, 225], lineWidth: 0.1 },
+        styles: { valign: 'middle', fontSize: 8.2, cellPadding: 1.0, font: 'helvetica', textColor: [15, 23, 42] },
+        headStyles: { fillColor: [80, 154, 163], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center', lineWidth: 0.1, lineColor: [203, 213, 225], minCellHeight: 9 },
+        bodyStyles: { minCellHeight: 8.5, lineColor: [203, 213, 225], lineWidth: 0.1 },
         columnStyles: {
           0: { cellWidth: 13.58, halign: 'center' }, // Sr. No. (7%)
           1: { cellWidth: 58.20, halign: 'left' },   // Item Description (30%)
@@ -439,10 +440,33 @@ function QuotationBuilder() {
             if (item && item.product) {
               const base64 = (item.id && preloaded[item.id]) || (item.product.sku && preloaded[item.product.sku]) || item.product.image;
               if (base64) {
-                const dim = 12;
-                const x = data.cell.x + (data.cell.width / 2) - (dim / 2);
-                const y = data.cell.y + (data.cell.height / 2) - (dim / 2);
-                addPdfImage(pdf, base64, x, y, dim, dim);
+                try {
+                  const props = pdf.getImageProperties(base64);
+                  const imgWidth = props.width || 100;
+                  const imgHeight = props.height || 100;
+                  
+                  const padding = 1.0; // 1mm padding around the image
+                  const maxW = data.cell.width - (padding * 2);
+                  const maxH = data.cell.height - (padding * 2);
+                  
+                  const ratio = imgWidth / imgHeight;
+                  let drawW = maxW;
+                  let drawH = drawW / ratio;
+                  
+                  if (drawH > maxH) {
+                    drawH = maxH;
+                    drawW = drawH * ratio;
+                  }
+                  
+                  const x = data.cell.x + (data.cell.width - drawW) / 2;
+                  const y = data.cell.y + (data.cell.height - drawH) / 2;
+                  addPdfImage(pdf, base64, x, y, drawW, drawH);
+                } catch (err) {
+                  const dim = Math.min(data.cell.width - 2, data.cell.height - 2);
+                  const x = data.cell.x + (data.cell.width - dim) / 2;
+                  const y = data.cell.y + (data.cell.height - dim) / 2;
+                  addPdfImage(pdf, base64, x, y, dim, dim);
+                }
               }
             }
           }
@@ -457,7 +481,7 @@ function QuotationBuilder() {
 
       // Determine bottom position and page breaks for signature areas
       let finalY = (pdf as any).lastAutoTable.finalY || 106;
-      const requiredFooterHeight = 65;
+      const requiredFooterHeight = 82;
       
       if (finalY + requiredFooterHeight > 297 - bottomMargin) {
         pdf.addPage();
@@ -512,6 +536,11 @@ function QuotationBuilder() {
         totalsBody.push([`Discount (${discountPercentage}%)`, `-${formatCurrency(quote.discountAmount || 0)}`]);
         totalsBody.push(['Net Total', formatCurrency(quote.netTotal || safeSubtotal)]);
       }
+
+      const deliveryCharges = quote.deliveryCharges || 0;
+      if (deliveryCharges > 0) {
+        totalsBody.push(['Delivery Charges', formatCurrency(deliveryCharges)]);
+      }
       
       totalsBody.push(['VAT 5%', formatCurrency(safeVatAmount)]);
       totalsBody.push(['Grand Total', formatCurrency(safeGrandTotal)]);
@@ -529,32 +558,21 @@ function QuotationBuilder() {
         body: totalsBody,
         didParseCell: (data) => {
           if (data.row.index === totalsBody.length - 1) {
-            if (data.column.index === 0) {
-              data.cell.styles.fillColor = [30, 41, 59];
-              data.cell.styles.textColor = [255, 255, 255];
-            } else {
-              data.cell.styles.textColor = [30, 58, 138];
+            data.cell.styles.fillColor = [15, 68, 114]; // Dark Blue Logo Color
+            data.cell.styles.textColor = [255, 255, 255];
+            if (data.column.index === 1) {
               data.cell.styles.fontSize = 8.5;
             }
-          } else if (discountPercentage > 0 && data.row.index === 1 && data.column.index === 1) {
-            data.cell.styles.textColor = [5, 150, 105]; // Emerald 600
+          } else {
+            const rowLabel = totalsBody[data.row.index]?.[0] || '';
+            if (rowLabel.startsWith('Discount') && data.column.index === 1) {
+              data.cell.styles.textColor = [5, 150, 105]; // Emerald 600
+            }
           }
         }
       });
 
       // Terms & Conditions and Signature Area
-      // ADDING SPACING: Increased baseline offset to provide a professional gap (approx 35px)
-      const termsStartY = (pdf as any).lastAutoTable.finalY + 8.0;
-
-      pdf.setFontSize(8.5);
-      pdf.setTextColor(15, 23, 42); // slate-900
-      pdf.setFont('helvetica', 'bold');
-      pdf.text("Terms & Conditions:", 8, termsStartY + 4);
-
-      pdf.setFontSize(7);
-      pdf.setFont('helvetica', 'normal');
-      pdf.setTextColor(15, 23, 42); // slate-900
-
       let terms = [
         "1. The above prices are in Dirhams (AED) quoted based on the quantities requested.",
         "2. Payment Terms 100% advance against order confirmation.",
@@ -566,12 +584,6 @@ function QuotationBuilder() {
       if (appSettings?.defaultTerms) {
         terms = appSettings.defaultTerms.split('\n').filter((t: string) => t.trim() !== '').map((t: string, idx: number) => `${idx + 1}. ${t.trim()}`);
       }
-
-      let termY = termsStartY + 8;
-      terms.forEach(term => {
-        pdf.text(term, 8, termY);
-        termY += 3.5;
-      });
 
       // Calculate stamp dimensions to determine the line position
       let stampConfigHeight = 16; 
@@ -589,10 +601,36 @@ function QuotationBuilder() {
          stampConfigHeight = 16; 
       }
 
+      // Dynamic page-break verification to completely prevent overlapping with the footer image
+      let termsStartY = (pdf as any).lastAutoTable.finalY + 6.0; // Reduced/adjusted layout gap to 6.0mm
+      const totalNeededHeight = 6.0 + 4.0 + (terms.length * 3.5) + stampConfigHeight + 5.0 + 8.0;
+
+      if (termsStartY + totalNeededHeight > 297 - bottomMargin) {
+        pdf.addPage();
+        currentPage++;
+        drawHeaderAndFooter(currentPage);
+        termsStartY = tablesStartY;
+      }
+
+      pdf.setFontSize(8.5);
+      pdf.setTextColor(15, 23, 42); // slate-900
+      pdf.setFont('helvetica', 'bold');
+      pdf.text("Terms & Conditions:", 8, termsStartY + 4);
+
+      pdf.setFontSize(7);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(15, 23, 42); // slate-900
+
+      let termY = termsStartY + 6.0; // Gap before terms is 6.0mm
+      terms.forEach(term => {
+        pdf.text(term, 8, termY);
+        termY += 3.5;
+      });
+
       // Customer's signature and Authorized Signature align lines
-      // Ensure we leave enough space for the stamp ABOVE the line
-      const signatureLineY = termY + stampConfigHeight + 6;
-      const signatureLabelY = signatureLineY + 4;
+      // Gap before signatures is 5.0mm as requested
+      const signatureLineY = termY + stampConfigHeight + 5.0;
+      const signatureLabelY = signatureLineY + 4.0;
 
       // Stamp representation above the line
       if (appSettings?.companyStamp && appSettings?.showStampInPdf !== false) {
@@ -753,6 +791,7 @@ function QuotationBuilder() {
               discountAmount: q.discountAmount || 0,
               discountPercentage: q.discountPercentage || 0,
               netTotal: q.netTotal || 0,
+              deliveryCharges: q.deliveryCharges || 0,
               vatAmount: q.vatAmount || 0,
               grandTotal: q.grandTotal || 0,
               createdAt: q.createdAt
@@ -790,6 +829,7 @@ function QuotationBuilder() {
             discountAmount: 0,
             discountPercentage: 0,
             netTotal: 0,
+            deliveryCharges: 0,
             vatAmount: 0,
             grandTotal: 0,
             status: 'Draft',
@@ -895,12 +935,17 @@ function QuotationBuilder() {
     }
   };
 
-  const recalculateTotals = (items: QuoteItem[], discountPercentage: number = quote.discountPercentage || 0) => {
+  const recalculateTotals = (
+    items: QuoteItem[], 
+    discountPercentage: number = quote.discountPercentage || 0,
+    deliveryCharges: number = quote.deliveryCharges || 0
+  ) => {
     const subtotal = items.reduce((sum, item) => sum + (item.qty * item.unitPrice), 0);
     const discountAmount = (subtotal * discountPercentage) / 100;
     const netTotal = subtotal - discountAmount;
-    const vatAmount = netTotal * 0.05;
-    const grandTotal = netTotal + vatAmount;
+    const taxableAmount = netTotal + deliveryCharges;
+    const vatAmount = taxableAmount * 0.05;
+    const grandTotal = taxableAmount + vatAmount;
 
     setQuote(prev => ({
       ...prev,
@@ -909,6 +954,7 @@ function QuotationBuilder() {
       discountPercentage,
       discountAmount: Math.round(discountAmount * 100) / 100,
       netTotal: Math.round(netTotal * 100) / 100,
+      deliveryCharges: Math.round(deliveryCharges * 100) / 100,
       vatAmount: Math.round(vatAmount * 100) / 100,
       grandTotal: Math.round(grandTotal * 100) / 100
     }));
@@ -1348,6 +1394,21 @@ function QuotationBuilder() {
                           </div>
                         </>
                       )}
+
+                      <div className="flex justify-between items-center text-sm text-slate-600 border-t border-slate-100 pt-2">
+                        <span>Delivery Charges (AED)</span>
+                        <input 
+                          type="number" 
+                          min="0" 
+                          step="any"
+                          className="w-25 border border-slate-200 bg-white rounded-md p-1.5 text-sm text-right focus:ring-2 focus:ring-blue-500 outline-none font-mono"
+                          value={quote.deliveryCharges !== undefined ? quote.deliveryCharges : ''}
+                          onChange={e => {
+                            const val = Math.max(0, Number(e.target.value));
+                            recalculateTotals(quote.items, quote.discountPercentage, val);
+                          }}
+                        />
+                      </div>
                       
                       <div className="flex justify-between text-sm text-slate-600 border-b border-slate-200 pb-3 mt-2">
                         <span>VAT (5%)</span>

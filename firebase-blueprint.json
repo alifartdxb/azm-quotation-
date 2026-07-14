@@ -24,7 +24,8 @@
       "type": "object",
       "properties": {
         "quoteNo": { "type": "string" },
-        "customerId": { "type": "string" }
+        "customerId": { "type": "string" },
+        "deliveryCharges": { "type": "number" }
       }
     }
   },

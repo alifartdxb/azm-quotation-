@@ -44,6 +44,7 @@ export interface Quotation {
   discountPercentage?: number;
   discountAmount?: number;
   netTotal?: number;
+  deliveryCharges?: number;
   vatAmount: number;
   grandTotal: number;
   status: 'Draft' | 'Pending Approval' | 'Approved' | 'Rejected' | 'Sent' | 'Expired' | 'Converted to Order' | string;
@@ -163,6 +164,7 @@ export interface SalesInvoice {
   discountPercentage?: number;
   discountAmount?: number;
   netTotal?: number;
+  deliveryCharges?: number;
   vatAmount: number;
   grandTotal: number;
   status: 'Draft' | 'Pending Approval' | 'Approved' | 'Converted to Invoice' | 'Invoice Sent' | 'Partially Paid' | 'Paid' | 'Cancelled' | string;

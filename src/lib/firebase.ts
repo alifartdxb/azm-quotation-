@@ -3,18 +3,12 @@ import { initializeFirestore, collection, getDocs, doc, setDoc, addDoc, updateDo
 import { getAuth } from 'firebase/auth';
 import type { Customer, Product, Quotation, AuditLog, AppSettings, CrmCustomer, WhatsAppTemplate, WhatsAppCampaign, SalesInvoice } from '../types';
 import { cleanFirestoreData } from './utils';
-
-const firebaseConfig = {
-  projectId: "gen-lang-client-0576582933",
-  appId: "1:122595688318:web:1afeebee0c48e68e31bd2f",
-  apiKey: "AIzaSyAlZ8ABshX1qELu8X82ls6UDNhLdMx4qLc",
-  authDomain: "gen-lang-client-0576582933.firebaseapp.com",
-};
+import firebaseConfig from '../../firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
 export const db = initializeFirestore(app, {
   experimentalForceLongPolling: true,
-}, "ai-studio-53a2eae1-8e85-4d88-a14c-0998c0938810");
+}, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
 
 // Logic Helpers
@@ -602,6 +596,7 @@ export const convertQuotationToSalesInvoice = async (quotation: Quotation): Prom
     discountPercentage: quotation.discountPercentage,
     discountAmount: quotation.discountAmount,
     netTotal: quotation.netTotal,
+    deliveryCharges: quotation.deliveryCharges || 0,
     vatAmount: quotation.vatAmount,
     grandTotal: quotation.grandTotal,
     status: 'Unpaid',

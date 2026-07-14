@@ -42,7 +42,8 @@ function InvoiceBuilder() {
     paymentStatus: 'Unpaid',
     paidAmount: 0,
     outstandingBalance: 0,
-    remarks: ''
+    remarks: '',
+    deliveryCharges: 0
   });
 
   const printRef = useRef<HTMLDivElement>(null);
@@ -108,7 +109,7 @@ function InvoiceBuilder() {
   // Recalculate totals periodically when items edit
   useEffect(() => {
     recalculateTotals();
-  }, [invoice.items, invoice.discountPercentage, invoice.paidAmount]);
+  }, [invoice.items, invoice.discountPercentage, invoice.paidAmount, invoice.deliveryCharges]);
 
   const recalculateTotals = () => {
     const items = invoice.items || [];
@@ -116,8 +117,10 @@ function InvoiceBuilder() {
     const discountPercent = invoice.discountPercentage || 0;
     const discountAmount = subtotal * (discountPercent / 100);
     const netTotal = subtotal - discountAmount;
-    const vatAmount = netTotal * 0.05;
-    const grandTotal = netTotal + vatAmount;
+    const deliveryCharges = invoice.deliveryCharges || 0;
+    const taxableAmount = netTotal + deliveryCharges;
+    const vatAmount = taxableAmount * 0.05;
+    const grandTotal = taxableAmount + vatAmount;
 
     const paidAmt = invoice.paidAmount || 0;
     const outstanding = Math.max(0, grandTotal - paidAmt);
@@ -134,6 +137,7 @@ function InvoiceBuilder() {
         prev.subtotal === subtotal &&
         prev.discountAmount === discountAmount &&
         prev.netTotal === netTotal &&
+        prev.deliveryCharges === deliveryCharges &&
         prev.vatAmount === vatAmount &&
         prev.grandTotal === grandTotal &&
         prev.outstandingBalance === outstanding &&
@@ -146,6 +150,7 @@ function InvoiceBuilder() {
         subtotal: Math.round(subtotal * 100) / 100,
         discountAmount: Math.round(discountAmount * 100) / 100,
         netTotal: Math.round(netTotal * 100) / 100,
+        deliveryCharges: Math.round(deliveryCharges * 100) / 100,
         vatAmount: Math.round(vatAmount * 100) / 100,
         grandTotal: Math.round(grandTotal * 100) / 100,
         outstandingBalance: Math.round(outstanding * 100) / 100,
@@ -372,10 +377,10 @@ function InvoiceBuilder() {
         margin: { left: 8 },
         tableWidth: 95,
         theme: 'grid',
-        styles: { fontSize: 8.8, cellPadding: { top: 1.5, bottom: 1.5, left: 4, right: 4 }, font: 'helvetica', textColor: [15, 23, 42] },
-        headStyles: { fontSize: 11, fillColor: [80, 158, 159], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' }, // Teal
+        styles: { fontSize: 8.0, cellPadding: { top: 1.0, bottom: 1.0, left: 3, right: 3 }, font: 'helvetica', textColor: [15, 23, 42] },
+        headStyles: { fontSize: 10, fillColor: [80, 158, 159], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' }, // Teal
         columnStyles: {
-          0: { cellWidth: 35, fontStyle: 'bold', fillColor: [248, 250, 252] },
+          0: { cellWidth: 32, fontStyle: 'bold', fillColor: [248, 250, 252] },
           1: { cellWidth: 'auto', textColor: [15, 23, 42] }
         },
         head: [[{ content: 'CUSTOMER INFORMATION', colSpan: 2 }]],
@@ -398,8 +403,8 @@ function InvoiceBuilder() {
         margin: { left: 107 },
         tableWidth: 95,
         theme: 'grid',
-        styles: { fontSize: 8.8, cellPadding: { top: 1.5, bottom: 1.5, left: 4, right: 4 }, font: 'helvetica', textColor: [15, 23, 42] },
-        headStyles: { fontSize: 11, fillColor: [80, 158, 159], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' }, // Teal
+        styles: { fontSize: 8.0, cellPadding: { top: 1.0, bottom: 1.0, left: 3, right: 3 }, font: 'helvetica', textColor: [15, 23, 42] },
+        headStyles: { fontSize: 10, fillColor: [80, 158, 159], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' }, // Teal
         columnStyles: {
           0: { cellWidth: 28, fontStyle: 'bold', fillColor: [248, 250, 252] },
           1: { cellWidth: 'auto', textColor: [15, 23, 42] }
@@ -407,8 +412,8 @@ function InvoiceBuilder() {
         head: [[{ content: 'TAX INVOICE', colSpan: 2 }]],
         body: [
           [
-            { content: 'No.:', styles: { fontSize: 8.8, fontStyle: 'bold', textColor: [26, 58, 92] } },
-            { content: safeInvoiceNo, styles: { fontSize: 10.2, fontStyle: 'bold', textColor: [26, 58, 92] } }
+            { content: 'No.:', styles: { fontSize: 8.0, fontStyle: 'bold', textColor: [26, 58, 92] } },
+            { content: safeInvoiceNo, styles: { fontSize: 9.5, fontStyle: 'bold', textColor: [26, 58, 92] } }
           ],
           ['Date:', invoice.createdAt ? format(parseDate(invoice.createdAt), 'dd MMM yyyy') : format(new Date(), 'dd MMM yyyy')],
           ['Due Date:', safeDueDate],
@@ -436,7 +441,7 @@ function InvoiceBuilder() {
         ];
       });
 
-      const headFinalY = (pdf as any).lastAutoTable.finalY + 8;
+      const headFinalY = (pdf as any).lastAutoTable.finalY + 4.0;
       const bottomMargin = appSettings?.footerImage ? footerHeight + 5 : 20;
 
       // Draw Main Items table
@@ -444,9 +449,9 @@ function InvoiceBuilder() {
         startY: headFinalY,
         margin: { left: 8, right: 8, top: tablesStartY, bottom: bottomMargin },
         theme: 'grid',
-        styles: { valign: 'middle', fontSize: 8.5, cellPadding: 1.5, font: 'helvetica', textColor: [15, 23, 42] },
-        headStyles: { fillColor: [80, 158, 159], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center', lineWidth: 0.1, lineColor: [203, 213, 225], minCellHeight: 10 },
-        bodyStyles: { minCellHeight: 10, lineColor: [203, 213, 225], lineWidth: 0.1 },
+        styles: { valign: 'middle', fontSize: 8.2, cellPadding: 1.0, font: 'helvetica', textColor: [15, 23, 42] },
+        headStyles: { fillColor: [80, 158, 159], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center', lineWidth: 0.1, lineColor: [203, 213, 225], minCellHeight: 9 },
+        bodyStyles: { minCellHeight: 8.5, lineColor: [203, 213, 225], lineWidth: 0.1 },
         columnStyles: {
           0: { cellWidth: 13.58, halign: 'center' }, // Sr. No. (7%)
           1: { cellWidth: 90, halign: 'left' },      // Item Description (~46%)
@@ -469,7 +474,7 @@ function InvoiceBuilder() {
 
       // Determine bottom position and page breaks for signature areas
       let finalY = (pdf as any).lastAutoTable.finalY || 106;
-      const requiredFooterHeight = 65; // Reduced required height since bank details attach
+      const requiredFooterHeight = 85; // Height calculation matching Totals and signatures
       
       if (finalY + requiredFooterHeight > 297 - bottomMargin) {
         pdf.addPage();
@@ -524,6 +529,11 @@ function InvoiceBuilder() {
         totalsBody.push([`Discount (${discountPercentage}%)`, `-${formatCurrency(invoice.discountAmount || 0)}`]);
         totalsBody.push(['Net Total', formatCurrency(invoice.netTotal || safeSubtotal)]);
       }
+
+      const deliveryCharges = invoice.deliveryCharges || 0;
+      if (deliveryCharges > 0) {
+        totalsBody.push(['Delivery Charges', formatCurrency(deliveryCharges)]);
+      }
       
       totalsBody.push(['VAT 5%', formatCurrency(safeVatAmount)]);
       totalsBody.push(['Grand Total', formatCurrency(safeGrandTotal)]);
@@ -545,16 +555,14 @@ function InvoiceBuilder() {
         },
         body: totalsBody,
         didParseCell: (data: any) => {
-          if (data.row.index === totalsBody.length - 3) { // Grand Total
-            if (data.column.index === 0) {
-              data.cell.styles.fillColor = [80, 158, 159]; // Teal Background
-              data.cell.styles.textColor = [255, 255, 255];
-            } else {
-              data.cell.styles.fillColor = [80, 158, 159]; 
-              data.cell.styles.textColor = [255, 255, 255];
+          const rowLabel = totalsBody[data.row.index]?.[0] || '';
+          if (rowLabel === 'Grand Total') {
+            data.cell.styles.fillColor = [15, 68, 114]; // Dark Blue Logo Color
+            data.cell.styles.textColor = [255, 255, 255];
+            if (data.column.index === 1) {
               data.cell.styles.fontSize = 8.5;
             }
-          } else if (data.row.index === totalsBody.length - 2) { // Paid Amount
+          } else if (rowLabel === 'Paid Amount') {
             if (data.column.index === 0) {
               data.cell.styles.fillColor = [240, 253, 244]; // Light green bg-green-50
               data.cell.styles.textColor = [22, 101, 52]; // text-green-800
@@ -563,7 +571,7 @@ function InvoiceBuilder() {
               data.cell.styles.textColor = [22, 101, 52];
               data.cell.styles.fontStyle = 'bold';
             }
-          } else if (data.row.index === totalsBody.length - 1) { // Due Amount
+          } else if (rowLabel === 'Due Amount') {
             if (data.column.index === 0) {
               data.cell.styles.fillColor = [254, 242, 242]; // Light red bg-red-50
               data.cell.styles.textColor = [185, 28, 28]; // text-red-700
@@ -572,34 +580,42 @@ function InvoiceBuilder() {
               data.cell.styles.textColor = [185, 28, 28];
               data.cell.styles.fontStyle = 'bold';
             }
-          } else if (discountPercentage > 0 && data.row.index === 1 && data.column.index === 1) {
+          } else if (rowLabel.startsWith('Discount') && data.column.index === 1) {
             data.cell.styles.textColor = [5, 150, 105]; // Emerald 600
           }
         }
       });
 
       // Terms & Conditions / Declaration
-      const termsStartY = (pdf as any).lastAutoTable.finalY + 14.0;
+      const declarationText = appSettings?.invoiceDeclaration || "We declare that this invoice shows the actual price of the goods\ndescribed and that all particulars are true and correct.\nReceived the above goods in good order and condition";
+      const decLines = declarationText.split('\n');
+
+      let termsStartY = (pdf as any).lastAutoTable.finalY + 6.0; // Adjusted offset of 6.0mm as requested
+      const totalNeededHeight = 6.0 + 4.0 + (decLines.length * 4.0) + 5.0 + 8.0;
+
+      if (termsStartY + totalNeededHeight > 297 - bottomMargin) {
+        pdf.addPage();
+        currentPage++;
+        drawHeaderAndFooter(currentPage);
+        termsStartY = tablesStartY;
+      }
 
       pdf.setFontSize(8.5);
       pdf.setTextColor(15, 23, 42);
       pdf.setFont('helvetica', 'normal');
       pdf.text("Declaration", 8, termsStartY);
-
-      const declarationText = appSettings?.invoiceDeclaration || "We declare that this invoice shows the actual price of the goods\ndescribed and that all particulars are true and correct.\nReceived the above goods in good order and condition";
       
       pdf.setFontSize(8.5);
       pdf.setTextColor(15, 23, 42); 
       
       let termY = termsStartY + 4;
-      const decLines = declarationText.split('\n');
       decLines.forEach((line: string) => {
         pdf.text(line, 8, termY);
         termY += 4;
       });
 
       // Signatures
-      const sigY = termY + 25;
+      const sigY = termY + 5.0; // Adjusted offset of 5.0mm as requested
       
       // Stamp
       if (appSettings?.companyStamp) {
@@ -1065,6 +1081,20 @@ function InvoiceBuilder() {
                   <div className="flex justify-between text-slate-600 font-bold border-t border-slate-200 pt-2 text-xs">
                     <span>Net Total:</span>
                     <span className="font-mono font-black">{formatCurrency(invoice.netTotal || 0)}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-slate-500 gap-4">
+                    <span>Delivery Charges (AED):</span>
+                    <input 
+                      type="number" 
+                      min="0"
+                      step="any"
+                      className="w-20 border border-slate-200 bg-white rounded p-1 text-center font-mono text-xs" 
+                      value={invoice.deliveryCharges !== undefined ? invoice.deliveryCharges : ''}
+                      onChange={e => {
+                        const val = Math.max(0, Number(e.target.value));
+                        setInvoice({...invoice, deliveryCharges: val});
+                      }}
+                    />
                   </div>
                   <div className="flex justify-between text-slate-500 text-xs">
                     <span>VAT (5%):</span>

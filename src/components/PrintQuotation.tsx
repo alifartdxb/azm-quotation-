@@ -104,6 +104,7 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
   const discountPercentage = quotation?.discountPercentage || 0;
   const discountAmount = quotation?.discountAmount || 0;
   const netTotal = quotation?.netTotal || safeSubtotal;
+  const deliveryCharges = quotation?.deliveryCharges || 0;
   const safeVatAmount = quotation?.vatAmount || 0;
   const safeGrandTotal = quotation?.grandTotal || 0;
   const safeQuoteNo = quotation?.quoteNo || 'Draft';
@@ -340,6 +341,12 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
                               <td className="font-bold pr-1">{formatCurrency(netTotal)}</td>
                             </tr>
                           </>
+                        )}
+                        {deliveryCharges > 0 && (
+                          <tr>
+                            <td className="text-gray-600 text-right pr-2">Delivery Charges</td>
+                            <td className="font-medium pr-1">{formatCurrency(deliveryCharges)}</td>
+                          </tr>
                         )}
                         <tr>
                           <td className="font-bold bg-slate-100 text-right pr-2">VAT 5%</td>

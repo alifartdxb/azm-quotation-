@@ -96,6 +96,7 @@ export const PrintInvoice = React.forwardRef<HTMLDivElement, Props>(({ invoice, 
   const discountPercentage = invoice?.discountPercentage || 0;
   const discountAmount = invoice?.discountAmount || 0;
   const netTotal = invoice?.netTotal || safeSubtotal;
+  const deliveryCharges = invoice?.deliveryCharges || 0;
   const safeVatAmount = invoice?.vatAmount || 0;
   const safeGrandTotal = invoice?.grandTotal || 0;
   const safeInvoiceNo = invoice?.invoiceNo || 'Draft';
@@ -314,6 +315,12 @@ export const PrintInvoice = React.forwardRef<HTMLDivElement, Props>(({ invoice, 
                                 <td className="py-2 px-3 font-bold text-right text-[#1A3A5C]">{formatCurrency(netTotal)}</td>
                               </tr>
                             </>
+                          )}
+                          {deliveryCharges > 0 && (
+                            <tr className="border border-slate-200 bg-[#F8FAFC]">
+                              <td className="py-2 px-3 font-bold text-right border-r border-slate-200 text-[#1A3A5C]">Delivery Charges</td>
+                              <td className="py-2 px-3 font-bold text-right text-[#1A3A5C]">{formatCurrency(deliveryCharges)}</td>
+                            </tr>
                           )}
                           <tr className="border border-slate-200 bg-[#F8FAFC]">
                             <td className="py-2 px-3 font-bold text-right border-r border-slate-200 text-[#1A3A5C]">VAT 5%</td>
