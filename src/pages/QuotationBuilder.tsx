@@ -105,7 +105,7 @@ function QuotationBuilder() {
       alert("Error: Quotation number is missing.");
       return;
     }
-    if (!quote.customer || !quote.customer.customerName) {
+    if (!quote.customer || (!quote.customer.customerName && !quote.customer.companyName)) {
       alert("Error: Customer information is incomplete.");
       return;
     }
@@ -355,7 +355,7 @@ function QuotationBuilder() {
             'Customer Name:', 
             { content: safeCustomer.companyName || safeCustomer.customerName || '-', styles: { fontStyle: 'bold', textColor: [15, 23, 42] } }
           ],
-          ['Contact Person:', safeCustomer.customerName || '-'],
+          ['Contact Person:', safeCustomer.contactPerson || safeCustomer.customerName || '-'],
           ['Contact No.:', safeCustomer.mobile || '-'],
           ['Email:', safeCustomer.email || '-'],
           ['Address:', safeCustomer.address || '-'],
@@ -677,7 +677,7 @@ function QuotationBuilder() {
 
       // Save PDF output
       const sanitizeName = (name: string) => name.replace(/[/\\?%*:|"<>]/g, '-').trim();
-      const company = quote.customer?.customerName || 'Customer';
+      const company = quote.customer?.companyName || quote.customer?.customerName || 'Customer';
       const quoteNo = quote.quoteNo || 'Draft';
       const docName = sanitizeName(`Quotation_${quoteNo}_${company}.pdf`);
       
@@ -962,40 +962,74 @@ function QuotationBuilder() {
   };
 
   const handleSave = async () => {
-    if (!quote.customer?.customerName) return alert("Please enter Contact Person");
+    // 1. Validation
+    if (!quote.customer?.companyName && !quote.customer?.customerName) {
+      alert("Customer information is incomplete. Please enter a Company or Customer Name.");
+      return;
+    }
+    if (!quote.items || quote.items.length === 0) {
+      alert("Product data is invalid. Quotation must have at least one line item.");
+      return;
+    }
+    const hasInvalidPrice = quote.items.some(item => typeof item.unitPrice !== 'number' || isNaN(item.unitPrice) || item.unitPrice < 0);
+    if (hasInvalidPrice) {
+      alert("Product data is invalid. One or more items have invalid unit prices.");
+      return;
+    }
+
     setIsSaving(true);
     
     try {
-      const quoteNo = quote.quoteNo || await generateNextQuotationNumber();
+      // 2. Generate Quote No
+      let quoteNo = quote.quoteNo;
+      if (!quoteNo) {
+        try {
+          quoteNo = await generateNextQuotationNumber();
+        } catch (err: any) {
+          console.error("Quotation number generation error:", err);
+          throw new Error("Quotation number could not be generated.");
+        }
+      }
 
+      const createdAt = quote.createdAt || new Date().toISOString();
+
+      // 3. Sync CRM Customer
+      let crmCustomerId = null;
+      try {
+        crmCustomerId = await syncQuotationCustomerToCrm({ ...quote, quoteNo, createdAt } as Quotation, quote.salesperson || 'System');
+      } catch (crmErr: any) {
+        console.error("CRM Sync Error:", crmErr);
+        // We log but do not fail the quotation save if CRM sync fails due to permissions, etc.
+      }
+
+      // 4. Save Quotation
       const quoteToSave = cleanFirestoreData({
         ...quote,
         quoteNo,
-        createdAt: quote.createdAt || new Date().toISOString(),
+        createdAt,
+        customerId: crmCustomerId || quote.customerId || null
       });
 
       if (id) {
         await updateDoc(getTenantDoc('quotations', id), quoteToSave);
         await logActivity('Updated Quotation', 'Quotation', id, `Updated status to ${quote.status}`);
-        try {
-          await syncQuotationCustomerToCrm(quoteToSave);
-        } catch (crmErr) {
-          console.error("Failed to sync updated quotation customer to CRM:", crmErr);
-        }
+        alert("Quotation saved successfully.");
         setIsEditing(false);
       } else {
         const docRef = await addDoc(getTenantCollection('quotations'), quoteToSave);
         await logActivity('Created Quotation', 'Quotation', docRef.id, `Created quote ${quoteNo}`);
-        try {
-          await syncQuotationCustomerToCrm(quoteToSave);
-        } catch (crmErr) {
-          console.error("Failed to sync new quotation customer to CRM:", crmErr);
-        }
+        alert("Quotation saved successfully.");
         navigate(`/quotations/${docRef.id}`);
       }
-    } catch (err) {
-      console.error(err);
-      alert("Error saving quotation");
+    } catch (err: any) {
+      console.error("Save Error:", err);
+      if (err?.code === 'permission-denied') {
+        alert("Permission denied. Please log in or check your access rights.");
+      } else if (err?.message?.includes("offline") || err?.message?.includes("network")) {
+        alert("Unable to connect to Firestore. Please check your internet connection.");
+      } else {
+        alert(err?.message || "Error saving quotation");
+      }
     } finally {
        setIsSaving(false);
     }
@@ -1217,13 +1251,14 @@ function QuotationBuilder() {
                            ...quote.customer!,
                            companyName: customer.companyName || customer.customerName,
                            customerName: customer.customerName || companyName,
+                           contactPerson: customer.contactPerson || '',
                            mobile: customer.mobile || '',
                            email: customer.email || '',
                            trn: customer.trn || '',
                            address: customer.address || '',
                          }});
                        } else {
-                          setQuote({...quote, customer: {...quote.customer!, companyName, customerName: quote.customer?.customerName || companyName}});
+                          setQuote({...quote, customer: {...quote.customer!, companyName: companyName, customerName: companyName}});
                        }
                      }}
                    />
@@ -1231,7 +1266,7 @@ function QuotationBuilder() {
                  <div>
                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Contact Person</label>
                    <input type="text" className="w-full border border-slate-200 bg-slate-50 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                     value={quote.customer?.customerName || ''} onChange={e => setQuote({...quote, customer: {...quote.customer!, customerName: e.target.value}})} />
+                     value={quote.customer?.contactPerson || ''} onChange={e => setQuote({...quote, customer: {...quote.customer!, contactPerson: e.target.value}})} />
                  </div>
                  <div>
                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Mobile Number</label>

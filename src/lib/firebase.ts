@@ -301,29 +301,31 @@ export const saveCrmCustomer = async (customer: Partial<CrmCustomer>): Promise<s
   }
 };
 
-export const syncQuotationCustomerToCrm = async (quotation: Quotation): Promise<void> => {
+export const syncQuotationCustomerToCrm = async (quotation: Quotation, createdBy?: string): Promise<string | null> => {
   const cust = quotation.customer;
-  if (!cust || !cust.mobile) return;
+  if (!cust || (!cust.customerName && !cust.companyName)) return null;
 
-  const mobile = cust.mobile.trim();
+  const mobile = cust.mobile ? cust.mobile.trim() : '';
   const email = cust.email ? cust.email.trim().toLowerCase() : '';
-  const name = cust.customerName || '';
+  const name = cust.customerName || cust.companyName || '';
 
   const customersRef = getTenantCollection('crm_customers');
   const snapshot = await getDocs(customersRef);
   const allCustomers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as CrmCustomer));
 
   const existing = allCustomers.find(c => {
-    const cMobileClean = c.mobile.replace(/[^0-9]/g, '');
+    const cMobileClean = (c.mobile || '').replace(/[^0-9]/g, '');
     const inputMobileClean = mobile.replace(/[^0-9]/g, '');
-    const isMobileMatch = cMobileClean === inputMobileClean && cMobileClean.length >= 7;
+    const isMobileMatch = inputMobileClean.length >= 7 && cMobileClean === inputMobileClean;
     const isEmailMatch = email && c.email && c.email.trim().toLowerCase() === email;
-    return isMobileMatch || isEmailMatch;
+    const isNameMatch = name.length > 2 && c.customerName && c.customerName.trim().toLowerCase() === name.trim().toLowerCase();
+    
+    return isMobileMatch || isEmailMatch || isNameMatch;
   });
 
   const updatedData: Partial<CrmCustomer> = {
     customerName: name,
-    companyName: cust.companyName || '',
+    companyName: cust.companyName || name,
     contactPerson: cust.contactPerson || '',
     mobile: mobile,
     email: email,
@@ -341,14 +343,15 @@ export const syncQuotationCustomerToCrm = async (quotation: Quotation): Promise<
       ...updatedData,
       whatsapp: existing.whatsapp || mobile,
       customerType: existing.customerType || 'Retail',
-      tag: existing.tag === 'Hot Lead' ? 'Active Customer' : (existing.tag || 'Active Customer') // Upgrade hot leads to active customer once a quotation is locked
+      tag: existing.tag === 'Hot Lead' ? 'Active Customer' : (existing.tag || 'Active Customer')
     };
     await setDoc(getTenantDoc('crm_customers', existing.id as string), merged);
+    return existing.id as string;
   } else {
     // Create new
     const newCustomer: CrmCustomer = {
       customerName: name,
-      companyName: cust.companyName || '',
+      companyName: cust.companyName || name,
       contactPerson: cust.contactPerson || '',
       mobile: mobile,
       whatsapp: mobile,
@@ -361,10 +364,12 @@ export const syncQuotationCustomerToCrm = async (quotation: Quotation): Promise<
       tag: 'Hot Lead',
       notes: 'Automatically added from Quotation ' + (quotation.quoteNo || ''),
       createdAt: quotation.createdAt || new Date().toISOString(),
+      createdBy: createdBy || 'System',
       lastQuotationDate: quotation.createdAt || new Date().toISOString(),
       lastQuotationNo: quotation.quoteNo || ''
     };
-    await addDoc(getTenantCollection('crm_customers'), newCustomer);
+    const docRef = await addDoc(getTenantCollection('crm_customers'), newCustomer);
+    return docRef.id;
   }
 };
 

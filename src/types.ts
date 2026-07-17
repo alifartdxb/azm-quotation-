@@ -36,6 +36,7 @@ export interface Quotation {
   id: string;
   quoteNo: string;
   createdAt: string;
+  customerId?: string;
   customer: Customer;
   validityDays: number;
   subject?: string;
@@ -103,6 +104,7 @@ export interface AppSettings {
 
 export interface CrmCustomer {
   id?: string;
+  createdBy?: string;
   customerName: string;
   companyName: string;
   contactPerson?: string;
