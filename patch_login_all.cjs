@@ -1,4 +1,5 @@
-import { useState } from 'react';
+const fs = require('fs');
+const code = `import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Lock, Mail, AlertCircle, Building2, User, Globe, Phone, FileText, CheckCircle, MapPin, Map } from 'lucide-react';
@@ -90,9 +91,39 @@ export default function Login() {
       localStorage.setItem('registering_company', JSON.stringify({
         companyId,
         name: regAdmin.name,
-        email: regAdmin.email,
-        company: regCompany
+        email: regAdmin.email
       }));
+      
+      // Pre-create company settings
+      await setDoc(doc(db, 'companies', companyId), {
+         name: regCompany.name,
+         tradeLicense: regCompany.tradeLicense,
+         trn: regCompany.trn,
+         type: regCompany.businessType,
+         createdAt: new Date().toISOString()
+      });
+      
+      await setDoc(doc(db, 'companies', companyId, 'settings', 'company'), {
+         companyNameEn: regCompany.name,
+         companyNameAr: '',
+         email: regCompany.email,
+         phone: regCompany.phone,
+         trn: regCompany.trn,
+         website: regCompany.website,
+         address: regCompany.address
+      });
+      
+      await setDoc(doc(db, 'companies', companyId, 'counters', 'quotationCounter'), {
+         currentNumber: 1,
+         prefix: 'QTN',
+         year: new Date().getFullYear()
+      });
+      
+      await setDoc(doc(db, 'companies', companyId, 'counters', 'invoiceCounter'), {
+         currentNumber: 1,
+         prefix: 'INV',
+         year: new Date().getFullYear()
+      });
       
       // Register Auth user
       await createUserWithEmailAndPassword(auth, regAdmin.email, regAdmin.password);
@@ -122,7 +153,7 @@ export default function Login() {
         </p>
       </div>
 
-      <div className={`mt-8 sm:mx-auto sm:w-full ${isRegistering ? 'sm:max-w-4xl' : 'sm:max-w-md'}`}>
+      <div className={\`mt-8 sm:mx-auto sm:w-full \${isRegistering ? 'sm:max-w-4xl' : 'sm:max-w-md'}\`}>
         <div className="bg-white py-8 px-4 shadow-xl shadow-slate-200/50 sm:rounded-2xl sm:px-10 border border-slate-100">
           {error && (
             <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm flex items-start gap-2 mb-6">
@@ -297,29 +328,11 @@ export default function Login() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">WhatsApp Number</label>
-                    <input
-                      type="text"
-                      value={regCompany.whatsapp}
-                      onChange={(e) => setRegCompany({...regCompany, whatsapp: e.target.value})}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
-                    />
-                  </div>
-                  <div>
                     <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Company Email</label>
                     <input
                       type="email"
                       value={regCompany.email}
                       onChange={(e) => setRegCompany({...regCompany, email: e.target.value})}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Website (Optional)</label>
-                    <input
-                      type="text"
-                      value={regCompany.website}
-                      onChange={(e) => setRegCompany({...regCompany, website: e.target.value})}
                       className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
                     />
                   </div>
@@ -398,3 +411,6 @@ export default function Login() {
     </div>
   );
 }
+`;
+
+fs.writeFileSync('src/pages/Login.tsx', code);

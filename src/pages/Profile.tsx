@@ -47,7 +47,7 @@ export default function Profile() {
 
     try {
       // Update in Firestore
-      const userRef = doc(db, 'users', user.uid);
+      const userRef = (user.companyId && user.companyId !== 'company_001') ? doc(db, 'companies', user.companyId, 'users', user.uid) : doc(db, 'users', user.uid);
       await updateDoc(userRef, {
         name: name.trim()
       });

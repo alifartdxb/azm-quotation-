@@ -8,60 +8,80 @@ service cloud.firestore {
     }
     
     function getUserRole() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
+      return exists(userPath) ? get(userPath).data.get('role', 'VIEWER') : 'VIEWER';
+    }
+    
+    function getUserCompanyId() {
+      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
+      return exists(userPath) ? get(userPath).data.get('companyId', 'company_001') : 'company_001';
     }
     
     function isSuperAdmin() {
       return isAuthenticated() && (
         (request.auth.token.get('email', '') == 'alifartdxb@gmail.com') ||
         (request.auth.token.get('email', '') == 'admin@azmgroup.com') ||
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'SUPER_ADMIN')
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'SUPER_ADMIN')
       );
     }
     
-    function isManager() {
-      return isAuthenticated() && (
-        (request.auth.token.get('email', '') == 'alifartdxb@gmail.com') ||
-        (request.auth.token.get('email', '') == 'admin@azmgroup.com') ||
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-         (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'SUPER_ADMIN' || 
-          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'SALES_MANAGER'))
-      );
-    }
-
+    // Root users collection
     match /users/{userId} {
       allow read: if isAuthenticated();
       // Allow user to write to their own doc initially, or superadmin
       allow write: if isSuperAdmin() || request.auth.uid == userId;
     }
     
+    // Legacy root collections (company_001)
     match /products/{document=**} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow read, write: if isAuthenticated() && getUserCompanyId() == 'company_001';
     }
     
     match /quotations/{document=**} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
-      allow update: if isAuthenticated();
-      allow delete: if isAuthenticated();
+      allow read, write: if isAuthenticated() && getUserCompanyId() == 'company_001';
+    }
+    
+    match /sales_invoices/{document=**} {
+      allow read, write: if isAuthenticated() && getUserCompanyId() == 'company_001';
+    }
+    
+    match /crm_customers/{document=**} {
+      allow read, write: if isAuthenticated() && getUserCompanyId() == 'company_001';
     }
     
     match /settings/{document=**} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if isAuthenticated() && getUserCompanyId() == 'company_001';
     }
     
     match /counters/{document=**} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if isAuthenticated() && getUserCompanyId() == 'company_001';
     }
     
     match /audit_logs/{document=**} {
-      allow read: if isSuperAdmin();
-      allow create: if isAuthenticated();
+      allow read: if isSuperAdmin() && getUserCompanyId() == 'company_001';
+      allow create: if isAuthenticated() && getUserCompanyId() == 'company_001';
       allow update, delete: if false; // Immutable audit logs
     }
     
+    match /whatsapp_templates/{document=**} {
+      allow read, write: if isAuthenticated() && getUserCompanyId() == 'company_001';
+    }
+    
+    match /whatsapp_campaigns/{document=**} {
+      allow read, write: if isAuthenticated() && getUserCompanyId() == 'company_001';
+    }
+
+    // Multi-tenant collections
+    match /companies/{companyId} {
+      allow read, write: if isAuthenticated() && getUserCompanyId() == companyId;
+      
+      match /{collectionName}/{document=**} {
+        allow read, write: if isAuthenticated() && getUserCompanyId() == companyId;
+      }
+    }
+    
+    // Catch-all
     match /{document=**} {
       allow read, write: if isSuperAdmin();
     }

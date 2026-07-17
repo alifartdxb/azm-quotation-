@@ -1,3 +1,4 @@
+import { getTenantCollection, getTenantDoc } from '../lib/tenant';
 import { useState, useEffect, useRef } from 'react';
 import type { Product } from '../types';
 import { Plus, Search, Image as ImageIcon, Upload, FileSpreadsheet, X, Save, Pencil, Trash2, CheckCircle, ArrowUpDown } from 'lucide-react';
@@ -106,7 +107,7 @@ export default function Products() {
           image: row.image || row.Image || 'https://upload.wikimedia.org/wikipedia/commons/f/fc/No_picture_available.png'
         };
 
-        const newDocRef = doc(collection(db, 'products'));
+        const newDocRef = doc(getTenantCollection('products'));
         batch.set(newDocRef, productData);
         count++;
       }
@@ -158,7 +159,7 @@ export default function Products() {
     setFormError('');
     try {
       if (editingId) {
-        await updateDoc(doc(db, 'products', editingId), {
+        await updateDoc(getTenantDoc('products', editingId), {
           sku: newProduct.sku,
           name: newProduct.name,
           brand: newProduct.brand || 'Generic',
@@ -169,7 +170,7 @@ export default function Products() {
         });
         await logActivity('Update Product', 'System', editingId, `Updated product SKU: ${newProduct.sku}, Name: ${newProduct.name}`);
       } else {
-        const docRef = await addDoc(collection(db, 'products'), {
+        const docRef = await addDoc(getTenantCollection('products'), {
           sku: newProduct.sku,
           name: newProduct.name,
           brand: newProduct.brand || 'Generic',
@@ -217,7 +218,7 @@ export default function Products() {
     if (!productToDelete) return;
     setIsSaving(true);
     try {
-      await deleteDoc(doc(db, 'products', productToDelete.id));
+      await deleteDoc(getTenantDoc('products', productToDelete.id));
       await logActivity('Delete Product', 'System', productToDelete.id, `Deleted product: ${productToDelete.name}`);
       
       // Remove deleted item from potential multi-selection set
@@ -247,7 +248,7 @@ export default function Products() {
       const selectedIdsArray = Array.from(selectedIds);
       
       selectedIdsArray.forEach(id => {
-        batch.delete(doc(db, 'products', id));
+        batch.delete(getTenantDoc('products', id));
       });
       
       await batch.commit();

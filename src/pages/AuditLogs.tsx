@@ -1,3 +1,4 @@
+import { getTenantCollection, getTenantDoc } from '../lib/tenant';
 import { useState, useEffect } from 'react';
 import { db } from '../lib/firebase';
 import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
@@ -13,7 +14,7 @@ export default function AuditLogs() {
   useEffect(() => {
     const fetchLogs = async () => {
       try {
-        const q = query(collection(db, 'audit_logs'), orderBy('timestamp', 'desc'), limit(100));
+        const q = query(getTenantCollection('audit_logs'), orderBy('timestamp', 'desc'), limit(100));
         const snapshot = await getDocs(q);
         setLogs(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as AuditLog)));
       } catch (error) {

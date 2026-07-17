@@ -1,4 +1,5 @@
 import { initializeApp } from 'firebase/app';
+import { getTenantCollection, getTenantDoc } from "./tenant";
 import { initializeFirestore, collection, getDocs, doc, setDoc, addDoc, updateDoc, deleteDoc, getDoc, query, orderBy, where, serverTimestamp, runTransaction } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import type { Customer, Product, Quotation, AuditLog, AppSettings, CrmCustomer, WhatsAppTemplate, WhatsAppCampaign, SalesInvoice } from '../types';
@@ -17,7 +18,7 @@ export const logActivity = async (action: string, entityType: AuditLog['entityTy
   if (!user) return;
   
   try {
-    await addDoc(collection(db, 'audit_logs'), {
+    await addDoc(getTenantCollection('audit_logs'), {
       userId: user.uid,
       userEmail: user.email || 'unknown',
       action,
@@ -34,7 +35,7 @@ export const logActivity = async (action: string, entityType: AuditLog['entityTy
 export const getAppSettings = async (): Promise<AppSettings> => {
   const docs = ['company', 'bank', 'templates', 'whatsapp', 'quotation', 'branding', 'invoice'];
   const results = await Promise.allSettled(
-    docs.map(name => getDoc(doc(db, 'settings', name)))
+    docs.map(name => getDoc(getTenantDoc('settings', name)))
   );
   
   const merged: Partial<AppSettings> = {};
@@ -105,12 +106,12 @@ export const getAppSettings = async (): Promise<AppSettings> => {
 };
 
 export const saveAppSettingsDoc = async (name: string, data: any): Promise<void> => {
-  const docRef = doc(db, 'settings', name);
+  const docRef = getTenantDoc('settings', name);
   await setDoc(docRef, data, { merge: true });
 };
 
 export const generateNextQuotationNumber = async (): Promise<string> => {
-  const counterRef = doc(db, 'counters', 'quotationCounter');
+  const counterRef = getTenantDoc('counters', 'quotationCounter');
   let newQuoteNo = '';
   const user = auth.currentUser;
   
@@ -145,7 +146,7 @@ export const generateNextQuotationNumber = async (): Promise<string> => {
   
   if (user && newQuoteNo) {
     try {
-      await addDoc(collection(db, 'audit_logs'), {
+      await addDoc(getTenantCollection('audit_logs'), {
         userId: user.uid,
         userEmail: user.email || 'unknown',
         timestamp: new Date().toISOString(),
@@ -164,26 +165,26 @@ export const generateNextQuotationNumber = async (): Promise<string> => {
 
 // Data fetching helpers
 export const getProducts = async (): Promise<Product[]> => {
-  const snapshot = await getDocs(collection(db, 'products'));
+  const snapshot = await getDocs(getTenantCollection('products'));
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
 };
 
 export const getQuotations = async (): Promise<Quotation[]> => {
-  const q = query(collection(db, 'quotations'), orderBy('createdAt', 'desc'));
+  const q = query(getTenantCollection('quotations'), orderBy('createdAt', 'desc'));
   const snapshot = await getDocs(q);
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Quotation));
 };
 
 export const deleteQuotation = async (id: string): Promise<void> => {
-  await deleteDoc(doc(db, 'quotations', id));
+  await deleteDoc(getTenantDoc('quotations', id));
 };
 
 export const updateQuotationStatus = async (id: string, status: string): Promise<void> => {
-  await updateDoc(doc(db, 'quotations', id), { status });
+  await updateDoc(getTenantDoc('quotations', id), { status });
 };
 
 export const getQuotation = async (id: string): Promise<Quotation | null> => {
-  const docRef = doc(db, 'quotations', id);
+  const docRef = getTenantDoc('quotations', id);
   const docSnap = await getDoc(docRef);
   if (docSnap.exists()) {
     return { id: docSnap.id, ...docSnap.data() } as Quotation;
@@ -218,14 +219,14 @@ export const getDashboardStats = async () => {
 // ==========================================
 
 export const getCrmCustomers = async (): Promise<CrmCustomer[]> => {
-  const q = query(collection(db, 'crm_customers'), orderBy('customerName'));
+  const q = query(getTenantCollection('crm_customers'), orderBy('customerName'));
   const snapshot = await getDocs(q);
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as CrmCustomer));
 };
 
 export const getCrmCustomerQuotationHistory = async (mobile: string): Promise<Quotation[]> => {
   if (!mobile) return [];
-  const q = query(collection(db, 'quotations'), orderBy('createdAt', 'desc'));
+  const q = query(getTenantCollection('quotations'), orderBy('createdAt', 'desc'));
   const snapshot = await getDocs(q);
   const quotes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Quotation));
   // Filter client-side to handle variations in formatting or just straight matches
@@ -238,7 +239,7 @@ export const getCrmCustomerQuotationHistory = async (mobile: string): Promise<Qu
 };
 
 export const deleteCrmCustomer = async (id: string): Promise<void> => {
-  await deleteDoc(doc(db, 'crm_customers', id));
+  await deleteDoc(getTenantDoc('crm_customers', id));
 };
 
 export const saveCrmCustomer = async (customer: Partial<CrmCustomer>): Promise<string> => {
@@ -251,7 +252,7 @@ export const saveCrmCustomer = async (customer: Partial<CrmCustomer>): Promise<s
   }
 
   // Cross-reference for duplicates
-  const customersRef = collection(db, 'crm_customers');
+  const customersRef = getTenantCollection('crm_customers');
   const snapshot = await getDocs(customersRef);
   const allCustomers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as CrmCustomer));
 
@@ -292,10 +293,10 @@ export const saveCrmCustomer = async (customer: Partial<CrmCustomer>): Promise<s
   };
 
   if (id) {
-    await setDoc(doc(db, 'crm_customers', id), cleanData);
+    await setDoc(getTenantDoc('crm_customers', id), cleanData);
     return id;
   } else {
-    const docRef = await addDoc(collection(db, 'crm_customers'), cleanData);
+    const docRef = await addDoc(getTenantCollection('crm_customers'), cleanData);
     return docRef.id;
   }
 };
@@ -308,7 +309,7 @@ export const syncQuotationCustomerToCrm = async (quotation: Quotation): Promise<
   const email = cust.email ? cust.email.trim().toLowerCase() : '';
   const name = cust.customerName || '';
 
-  const customersRef = collection(db, 'crm_customers');
+  const customersRef = getTenantCollection('crm_customers');
   const snapshot = await getDocs(customersRef);
   const allCustomers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as CrmCustomer));
 
@@ -342,7 +343,7 @@ export const syncQuotationCustomerToCrm = async (quotation: Quotation): Promise<
       customerType: existing.customerType || 'Retail',
       tag: existing.tag === 'Hot Lead' ? 'Active Customer' : (existing.tag || 'Active Customer') // Upgrade hot leads to active customer once a quotation is locked
     };
-    await setDoc(doc(db, 'crm_customers', existing.id as string), merged);
+    await setDoc(getTenantDoc('crm_customers', existing.id as string), merged);
   } else {
     // Create new
     const newCustomer: CrmCustomer = {
@@ -363,7 +364,7 @@ export const syncQuotationCustomerToCrm = async (quotation: Quotation): Promise<
       lastQuotationDate: quotation.createdAt || new Date().toISOString(),
       lastQuotationNo: quotation.quoteNo || ''
     };
-    await addDoc(collection(db, 'crm_customers'), newCustomer);
+    await addDoc(getTenantCollection('crm_customers'), newCustomer);
   }
 };
 
@@ -372,7 +373,7 @@ export const syncQuotationCustomerToCrm = async (quotation: Quotation): Promise<
 // ==========================================
 
 export const getWhatsAppTemplates = async (): Promise<WhatsAppTemplate[]> => {
-  const snapshot = await getDocs(collection(db, 'whatsapp_templates'));
+  const snapshot = await getDocs(getTenantCollection('whatsapp_templates'));
   let templates = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as WhatsAppTemplate));
 
   // Seed default templates if database is empty
@@ -423,7 +424,7 @@ export const getWhatsAppTemplates = async (): Promise<WhatsAppTemplate[]> => {
     ];
 
     for (const temp of defaultTemplates) {
-      await setDoc(doc(db, 'whatsapp_templates', temp.id), temp);
+      await setDoc(getTenantDoc('whatsapp_templates', temp.id), temp);
     }
     templates = defaultTemplates;
   }
@@ -432,11 +433,11 @@ export const getWhatsAppTemplates = async (): Promise<WhatsAppTemplate[]> => {
 };
 
 export const saveWhatsAppTemplate = async (template: WhatsAppTemplate): Promise<void> => {
-  await setDoc(doc(db, 'whatsapp_templates', template.id), template);
+  await setDoc(getTenantDoc('whatsapp_templates', template.id), template);
 };
 
 export const deleteWhatsAppTemplate = async (id: string): Promise<void> => {
-  await deleteDoc(doc(db, 'whatsapp_templates', id));
+  await deleteDoc(getTenantDoc('whatsapp_templates', id));
 };
 
 // ==========================================
@@ -444,13 +445,13 @@ export const deleteWhatsAppTemplate = async (id: string): Promise<void> => {
 // ==========================================
 
 export const getWhatsAppCampaigns = async (): Promise<WhatsAppCampaign[]> => {
-  const q = query(collection(db, 'whatsapp_campaigns'), orderBy('createdAt', 'desc'));
+  const q = query(getTenantCollection('whatsapp_campaigns'), orderBy('createdAt', 'desc'));
   const snapshot = await getDocs(q);
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as WhatsAppCampaign));
 };
 
 export const saveWhatsAppCampaign = async (campaign: WhatsAppCampaign): Promise<void> => {
-  await setDoc(doc(db, 'whatsapp_campaigns', campaign.id), campaign);
+  await setDoc(getTenantDoc('whatsapp_campaigns', campaign.id), campaign);
 };
 
 // ==========================================
@@ -458,13 +459,13 @@ export const saveWhatsAppCampaign = async (campaign: WhatsAppCampaign): Promise<
 // ==========================================
 
 export const getSalesInvoices = async (): Promise<SalesInvoice[]> => {
-  const q = query(collection(db, 'sales_invoices'), orderBy('createdAt', 'desc'));
+  const q = query(getTenantCollection('sales_invoices'), orderBy('createdAt', 'desc'));
   const snapshot = await getDocs(q);
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SalesInvoice));
 };
 
 export const getSalesInvoice = async (id: string): Promise<SalesInvoice | null> => {
-  const docRef = doc(db, 'sales_invoices', id);
+  const docRef = getTenantDoc('sales_invoices', id);
   const docSnap = await getDoc(docRef);
   if (docSnap.exists()) {
     return { id: docSnap.id, ...docSnap.data() } as SalesInvoice;
@@ -473,15 +474,15 @@ export const getSalesInvoice = async (id: string): Promise<SalesInvoice | null> 
 };
 
 export const deleteSalesInvoice = async (id: string): Promise<void> => {
-  await deleteDoc(doc(db, 'sales_invoices', id));
+  await deleteDoc(getTenantDoc('sales_invoices', id));
 };
 
 export const updateSalesInvoiceStatus = async (id: string, status: string): Promise<void> => {
-  await updateDoc(doc(db, 'sales_invoices', id), { status });
+  await updateDoc(getTenantDoc('sales_invoices', id), { status });
 };
 
 export const generateNextInvoiceNumber = async (): Promise<string> => {
-  const counterRef = doc(db, 'counters', 'invoiceCounter');
+  const counterRef = getTenantDoc('counters', 'invoiceCounter');
   let newInvoiceNo = '';
   const user = auth.currentUser;
   
@@ -516,7 +517,7 @@ export const generateNextInvoiceNumber = async (): Promise<string> => {
   
   if (user && newInvoiceNo) {
     try {
-      await addDoc(collection(db, 'audit_logs'), {
+      await addDoc(getTenantCollection('audit_logs'), {
         userId: user.uid,
         userEmail: user.email || 'unknown',
         timestamp: new Date().toISOString(),
@@ -563,11 +564,11 @@ export const saveSalesInvoice = async (invoice: Partial<SalesInvoice>): Promise<
   });
 
   if (id) {
-    await setDoc(doc(db, 'sales_invoices', id), cleanData);
+    await setDoc(getTenantDoc('sales_invoices', id), cleanData);
     await logActivity('Updated Sales Invoice', 'System', id, `Updated sales invoice ${invoice.invoiceNo}`);
     return id;
   } else {
-    const docRef = await addDoc(collection(db, 'sales_invoices'), cleanData);
+    const docRef = await addDoc(getTenantCollection('sales_invoices'), cleanData);
     await logActivity('Created Sales Invoice', 'System', docRef.id, `Created sales invoice ${invoice.invoiceNo}`);
     return docRef.id;
   }
@@ -611,7 +612,7 @@ export const convertQuotationToSalesInvoice = async (quotation: Quotation): Prom
   const invoiceId = await saveSalesInvoice(invoiceData);
 
   // Update Quotation Status to 'Converted to Invoice'
-  await updateDoc(doc(db, 'quotations', quotation.id), {
+  await updateDoc(getTenantDoc('quotations', quotation.id), {
     status: 'Converted to Invoice',
     invoiceNo: nextInvoiceNo,
     invoiceId: invoiceId

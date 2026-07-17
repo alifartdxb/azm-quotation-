@@ -1,3 +1,4 @@
+import { getTenantDoc } from '../lib/tenant';
 import { useState, useEffect, useRef } from 'react';
 import { Save, Building2, Landmark, FileText, Share2, Download, Upload, Database, Lock, ShieldAlert, CheckCircle, RefreshCw, Image as ImageIcon } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -42,6 +43,9 @@ export default function Settings() {
   // Counters live values state (Only for Super Admin to manage/view)
   const [counterCurrentNumber, setCounterCurrentNumber] = useState(735);
   const [counterPrefix, setCounterPrefix] = useState('QTN');
+  const [invCounterCurrentNumber, setInvCounterCurrentNumber] = useState(1);
+  const [invCounterPrefix, setInvCounterPrefix] = useState('INV');
+  const [invCounterYear, setInvCounterYear] = useState(new Date().getFullYear());
   const [counterYear, setCounterYear] = useState(new Date().getFullYear());
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -84,7 +88,14 @@ export default function Settings() {
 
         // Load live counter configuration if Super Admin
         if (isSuperAdmin) {
-          const counterSnap = await getDoc(doc(db, 'counters', 'quotationCounter'));
+          const counterSnap = await getDoc(getTenantDoc('counters', 'quotationCounter'));
+          const invCounterSnap = await getDoc(getTenantDoc('counters', 'invoiceCounter'));
+          if (invCounterSnap.exists()) {
+            const cData = invCounterSnap.data() as CounterData;
+            setInvCounterCurrentNumber(cData.currentNumber || 1);
+            setInvCounterPrefix(cData.prefix || 'INV');
+            setInvCounterYear(cData.year || new Date().getFullYear());
+          }
           if (counterSnap.exists()) {
             const counterData = counterSnap.data() as CounterData;
             setCounterCurrentNumber(counterData.currentNumber || 735);
@@ -144,13 +155,21 @@ export default function Settings() {
         await logActivity('Branding Settings Updated', 'Settings', 'branding', 'Updated PDF header/footer images and stamp');
       } else if (activeTab === 'counters') {
         // Super Admin updating counter properties
-        const counterRef = doc(db, 'counters', 'quotationCounter');
+        const counterRef = getTenantDoc('counters', 'quotationCounter');
+        const invCounterRef = getTenantDoc('counters', 'invoiceCounter');
+        await setDoc(invCounterRef, {
+          currentNumber: invCounterCurrentNumber,
+          prefix: invCounterPrefix,
+          year: invCounterYear
+        });
+
         await setDoc(counterRef, {
           currentNumber: Number(counterCurrentNumber),
           prefix: counterPrefix,
           year: Number(counterYear)
         });
         await logActivity('Quotation Counter Reset', 'System', 'quotationCounter', `Sequence reset to Prefix: ${counterPrefix}, Year: ${counterYear}, Current: ${counterCurrentNumber}`);
+        await logActivity('Invoice Counter Reset', 'System', 'invoiceCounter', `Sequence reset to Prefix: ${invCounterPrefix}, Year: ${invCounterYear}, Current: ${invCounterCurrentNumber}`);
       }
 
       setSaveStatus('success');
@@ -169,7 +188,7 @@ export default function Settings() {
       
       let counterConf = { currentNumber: 735, prefix: 'QTN', year: 2026 };
       if (isSuperAdmin) {
-        const snap = await getDoc(doc(db, 'counters', 'quotationCounter'));
+        const snap = await getDoc(getTenantDoc('counters', 'quotationCounter'));
         if (snap.exists()) {
           counterConf = snap.data() as CounterData;
         }
@@ -267,7 +286,7 @@ export default function Settings() {
         // Restore counter
         if (json.counters?.quotationCounter) {
           const c = json.counters.quotationCounter;
-          await setDoc(doc(db, 'counters', 'quotationCounter'), {
+          await setDoc(getTenantDoc('counters', 'quotationCounter'), {
             currentNumber: Number(c.currentNumber || 735),
             prefix: c.prefix || 'QTN',
             year: Number(c.year || 2026),
@@ -864,6 +883,39 @@ export default function Settings() {
                           required
                           value={counterCurrentNumber}
                           onChange={(e) => setCounterCurrentNumber(Number(e.target.value))}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-semibold font-mono"
+                        />
+                      </div>
+                    </div>
+                    <h3 className="font-bold text-slate-800 mt-8 mb-4 border-b border-slate-100 pb-2">Sales Invoice Counter</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                      <div>
+                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Invoice Prefix</label>
+                        <input 
+                          type="text" 
+                          required
+                          value={invCounterPrefix}
+                          onChange={(e) => setInvCounterPrefix(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-semibold font-mono"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Fiscal Sequence Year</label>
+                        <input 
+                          type="number" 
+                          required
+                          value={invCounterYear}
+                          onChange={(e) => setInvCounterYear(Number(e.target.value))}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-semibold font-mono"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Live Incremental Number</label>
+                        <input 
+                          type="number" 
+                          required
+                          value={invCounterCurrentNumber}
+                          onChange={(e) => setInvCounterCurrentNumber(Number(e.target.value))}
                           className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-semibold font-mono"
                         />
                       </div>

@@ -1,3 +1,4 @@
+import { getTenantCollection, getTenantDoc } from '../lib/tenant';
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import type { Quotation, Customer, Product, QuoteItem } from '../types';
@@ -974,7 +975,7 @@ function QuotationBuilder() {
       });
 
       if (id) {
-        await updateDoc(doc(db, 'quotations', id), quoteToSave);
+        await updateDoc(getTenantDoc('quotations', id), quoteToSave);
         await logActivity('Updated Quotation', 'Quotation', id, `Updated status to ${quote.status}`);
         try {
           await syncQuotationCustomerToCrm(quoteToSave);
@@ -983,7 +984,7 @@ function QuotationBuilder() {
         }
         setIsEditing(false);
       } else {
-        const docRef = await addDoc(collection(db, 'quotations'), quoteToSave);
+        const docRef = await addDoc(getTenantCollection('quotations'), quoteToSave);
         await logActivity('Created Quotation', 'Quotation', docRef.id, `Created quote ${quoteNo}`);
         try {
           await syncQuotationCustomerToCrm(quoteToSave);
