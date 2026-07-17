@@ -30,7 +30,7 @@ export default function Products() {
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newProduct, setNewProduct] = useState<Partial<Product>>({
-    sku: '', name: '', brand: '', price: 0, unit: 'Pcs', category: '', image: ''
+    sku: '', name: '', brand: '', price: 0, unit: 'Sqm', category: '', image: ''
   });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -102,7 +102,7 @@ export default function Products() {
           name: row.name || row.Product || row['Product Name'],
           brand: row.brand || row.Brand || 'Generic',
           price: parseFloat(row.price || row.Price || row.SellingPrice || '0'),
-          unit: row.unit || row.Unit || 'Pcs',
+          unit: row.unit || row.Unit || 'Sqm',
           category: row.category || row.Category || 'General',
           image: row.image || row.Image || 'https://upload.wikimedia.org/wikipedia/commons/f/fc/No_picture_available.png'
         };
@@ -164,7 +164,7 @@ export default function Products() {
           name: newProduct.name,
           brand: newProduct.brand || 'Generic',
           price: Number(newProduct.price),
-          unit: newProduct.unit || 'Pcs',
+          unit: newProduct.unit || 'Sqm',
           category: newProduct.category || 'General',
           image: newProduct.image || ''
         });
@@ -175,14 +175,14 @@ export default function Products() {
           name: newProduct.name,
           brand: newProduct.brand || 'Generic',
           price: Number(newProduct.price),
-          unit: newProduct.unit || 'Pcs',
+          unit: newProduct.unit || 'Sqm',
           category: newProduct.category || 'General',
           image: newProduct.image || ''
         });
         await logActivity('Create Product', 'System', docRef.id, `Created product SKU: ${newProduct.sku}, Name: ${newProduct.name}`);
       }
       setIsModalOpen(false);
-      setNewProduct({ sku: '', name: '', brand: '', price: 0, unit: 'Pcs', category: '', image: '' });
+      setNewProduct({ sku: '', name: '', brand: '', price: 0, unit: 'Sqm', category: '', image: '' });
       setEditingId(null);
       setFormError('');
       loadProducts();
@@ -343,7 +343,7 @@ export default function Products() {
           <button 
             onClick={() => {
               setEditingId(null);
-              setNewProduct({ sku: '', name: '', brand: '', price: 0, unit: 'Pcs', category: '', image: '' });
+              setNewProduct({ sku: '', name: '', brand: '', price: 0, unit: 'Sqm', category: '', image: '' });
               setIsModalOpen(true);
             }} 
             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-semibold shadow-sm transition-all active:scale-95"
@@ -408,6 +408,7 @@ export default function Products() {
                  <div>
                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Unit of Measure</label>
                    <select value={newProduct.unit} onChange={e => setNewProduct({...newProduct, unit: e.target.value})} className="w-full border border-slate-200 bg-slate-50 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                     <option value="Sqm">Sqm</option>
                      <option value="Pcs">Pcs</option>
                      <option value="Sqm">Sqm</option>
                      <option value="Box">Box</option>
