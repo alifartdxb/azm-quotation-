@@ -381,20 +381,20 @@ export const PrintQuotation = React.forwardRef<HTMLDivElement, Props>(({ quotati
                     <div className="w-[50%]">
                       <h4 className="font-bold text-[10px] text-gray-950 mb-1">Terms & Conditions:</h4>
                       <ol className="list-decimal list-inside text-[9px] text-gray-800 space-y-0.5 leading-tight">
-                        {appSettings?.defaultTerms 
-                          ? appSettings.defaultTerms.split('\n').filter((t: string) => t.trim() !== '').map((term: string, idx: number) => (
-                              <li key={idx}>{term}</li>
+                        {quotation.termsAndConditions !== undefined 
+                          ? quotation.termsAndConditions.split('\n').filter((t: string) => t.trim() !== '').map((term: string, idx: number) => (
+                              <li key={idx}>{term.replace(/^\d+\.\s*/, '')}</li>
                             ))
                           : (
                             <>
                               <li>The above prices are in Dirhams (AED) quoted based on the quantities requested.</li>
-                              <li>Payment Terms 100% advance against order confirmation.</li>
+                              <li>Payment Terms: 100% advance against order confirmation.</li>
                               <li>Delivery time to be confirmed upon order confirmation.</li>
-                              <li>Local delivery charges are not included within this quotation.</li>
-                              <li>Customized items eg. counter tops/vanity cannot be cancelled or exchanged after confirmation.</li>
+                              <li>Stock is subject to availability at the time of order confirmation.</li>
+                              <li>Local delivery charges are not included in this quotation.</li>
+                              <li>Customized items (e.g., countertops, vanity tops, etc.) cannot be cancelled or exchanged after order confirmation.</li>
                             </>
-                          )
-                        }
+                          )}
                       </ol>
                       
                       <div className="mt-10 border-t border-black w-48 sm:mx-0"></div>

@@ -574,17 +574,16 @@ function QuotationBuilder() {
       });
 
       // Terms & Conditions and Signature Area
-      let terms = [
+      let terms = quote.termsAndConditions !== undefined
+        ? quote.termsAndConditions.split('\n').filter((t: string) => t.trim() !== '')
+        : [
         "1. The above prices are in Dirhams (AED) quoted based on the quantities requested.",
-        "2. Payment Terms 100% advance against order confirmation.",
+        "2. Payment Terms: 100% advance against order confirmation.",
         "3. Delivery time to be confirmed upon order confirmation.",
-        "4. Local delivery charges are not included within this quotation.",
-        "5. Customized items eg. counter tops/vanity cannot be cancelled or exchanged after confirmation."
+        "4. Stock is subject to availability at the time of order confirmation.",
+        "5. Local delivery charges are not included in this quotation.",
+        "6. Customized items (e.g., countertops, vanity tops, etc.) cannot be cancelled or exchanged after order confirmation."
       ];
-
-      if (appSettings?.defaultTerms) {
-        terms = appSettings.defaultTerms.split('\n').filter((t: string) => t.trim() !== '').map((t: string, idx: number) => `${idx + 1}. ${t.trim()}`);
-      }
 
       // Calculate stamp dimensions to determine the line position
       let stampConfigHeight = 16; 
@@ -817,6 +816,7 @@ function QuotationBuilder() {
             },
             validityDays: 10,
             subject: 'Supply of Sanitaryware',
+            termsAndConditions: appSettings?.defaultTerms || "1. The above prices are in Dirhams (AED) quoted based on the quantities requested.\n2. Payment Terms: 100% advance against order confirmation.\n3. Delivery time to be confirmed upon order confirmation.\n4. Stock is subject to availability at the time of order confirmation.\n5. Local delivery charges are not included in this quotation.\n6. Customized items (e.g., countertops, vanity tops, etc.) cannot be cancelled or exchanged after order confirmation.",
             items: [{
               id: uuidv4(),
               productId: '',
@@ -1007,7 +1007,8 @@ function QuotationBuilder() {
         ...quote,
         quoteNo,
         createdAt,
-        customerId: crmCustomerId || quote.customerId || null
+        customerId: crmCustomerId || quote.customerId || null,
+        termsAndConditions: quote.termsAndConditions !== undefined ? quote.termsAndConditions : (appSettings?.defaultTerms || "1. The above prices are in Dirhams (AED) quoted based on the quantities requested.\n2. Payment Terms: 100% advance against order confirmation.\n3. Delivery time to be confirmed upon order confirmation.\n4. Stock is subject to availability at the time of order confirmation.\n5. Local delivery charges are not included in this quotation.\n6. Customized items (e.g., countertops, vanity tops, etc.) cannot be cancelled or exchanged after order confirmation.")
       });
 
       if (id) {
@@ -1299,14 +1300,7 @@ function QuotationBuilder() {
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
               <div className="p-5 border-b border-slate-100 flex items-center justify-between">
                  <h3 className="text-sm font-bold text-slate-800 uppercase tracking-tight">Line Items</h3>
-                 <div className="flex gap-4">
-                   <button onClick={addItem} className="text-xs text-blue-600 font-semibold flex items-center gap-1 hover:underline">
-                     <Plus className="w-3 h-3"/> Add Product
-                   </button>
-                   <button onClick={addManualItem} className="text-xs text-emerald-600 font-semibold flex items-center gap-1 hover:underline">
-                     <Plus className="w-3 h-3"/> Add Manual Item
-                   </button>
-                 </div>
+                 
               </div>
               
               <div className="overflow-x-auto p-5">
@@ -1397,10 +1391,28 @@ function QuotationBuilder() {
                     )}
                   </tbody>
                 </table>
+                
+                <div className="mt-4 flex gap-4">
+                  <button onClick={addItem} className="text-sm text-blue-600 font-semibold flex items-center gap-1 hover:underline bg-blue-50 px-3 py-1.5 rounded-md transition-colors hover:bg-blue-100">
+                    <Plus className="w-4 h-4"/> Add Product
+                  </button>
+                  <button onClick={addManualItem} className="text-sm text-emerald-600 font-semibold flex items-center gap-1 hover:underline bg-emerald-50 px-3 py-1.5 rounded-md transition-colors hover:bg-emerald-100">
+                    <Plus className="w-4 h-4"/> Add Manual Item
+                  </button>
+                </div>
   
-                {/* Live Totals summary */}
-                <div className="mt-6 flex justify-end">
-                   <div className="w-80 bg-slate-50 p-5 rounded-xl space-y-3 border border-slate-200 shadow-sm">
+                {/* Terms & Conditions and Live Totals summary */}
+                <div className="mt-6 flex flex-col lg:flex-row justify-between gap-6">
+                   <div className="flex-1 bg-slate-50 p-5 rounded-xl border border-slate-200 shadow-sm">
+                      <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Terms & Conditions</label>
+                      <textarea
+                         rows={6}
+                         className="w-full border border-slate-200 bg-white rounded-md p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none leading-relaxed"
+                         value={quote.termsAndConditions !== undefined ? quote.termsAndConditions : (appSettings?.defaultTerms || "1. The above prices are in Dirhams (AED) quoted based on the quantities requested.\n2. Payment Terms: 100% advance against order confirmation.\n3. Delivery time to be confirmed upon order confirmation.\n4. Stock is subject to availability at the time of order confirmation.\n5. Local delivery charges are not included in this quotation.\n6. Customized items (e.g., countertops, vanity tops, etc.) cannot be cancelled or exchanged after order confirmation.")}
+                         onChange={e => setQuote({...quote, termsAndConditions: e.target.value})}
+                      />
+                   </div>
+                   <div className="w-full lg:w-80 bg-slate-50 p-5 rounded-xl space-y-3 border border-slate-200 shadow-sm">
                       <div className="flex justify-between text-sm text-slate-600">
                         <span>Sub Total</span>
                         <span className="font-mono font-medium text-slate-900">{formatCurrency(quote.subtotal || 0)}</span>
@@ -1648,15 +1660,11 @@ function SearchableProductSelect({
 
   const getInputValue = () => {
     if (isOpen) return searchText;
-    return selectedProduct 
-      ? `${selectedProduct.sku} | ${selectedProduct.name} | ${formatCurrency(selectedProduct.price)}`
-      : '';
+    return selectedProduct ? `${selectedProduct.sku} | ${selectedProduct.name}` : '';
   };
 
   const getPlaceholder = () => {
-    return selectedProduct 
-      ? `${selectedProduct.sku} | ${selectedProduct.name} | ${formatCurrency(selectedProduct.price)} / ${selectedProduct.unit}`
-      : 'Search SKU, Brand, Name, Initials...';
+    return selectedProduct ? `${selectedProduct.sku} | ${selectedProduct.name}` : 'Search SKU, Brand, Name, Initials...';
   };
 
   return (

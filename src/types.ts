@@ -48,6 +48,7 @@ export interface Quotation {
   deliveryCharges?: number;
   vatAmount: number;
   grandTotal: number;
+  termsAndConditions?: string;
   status: 'Draft' | 'Pending Approval' | 'Approved' | 'Rejected' | 'Sent' | 'Expired' | 'Converted to Order' | string;
   salesperson: string;
   preparedBy?: string;
@@ -169,6 +170,7 @@ export interface SalesInvoice {
   deliveryCharges?: number;
   vatAmount: number;
   grandTotal: number;
+  termsAndConditions?: string;
   status: 'Draft' | 'Pending Approval' | 'Approved' | 'Converted to Invoice' | 'Invoice Sent' | 'Partially Paid' | 'Paid' | 'Cancelled' | string;
   salesperson: string;
   preparedBy?: string;
